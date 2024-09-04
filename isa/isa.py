@@ -39,3 +39,52 @@ class DmaWrite(Instruction):
   src: int
   dst: int
   size_bytes: int
+
+
+@dataclass
+class ModAdd(Instruction):
+  src0: int
+  src1: int
+  dst: int
+  length: int
+  mod_reg: int
+
+
+@dataclass
+class ModSub(Instruction):
+  src0: int
+  src1: int
+  dst: int
+  length: int
+  mod_reg: int
+
+
+@dataclass
+class ModMul(Instruction):
+  src0: int
+  src1: int
+  dst: int
+  length: int
+  mod_reg: int
+
+
+@dataclass
+class Butterfly(Instruction):
+  src: int
+  twiddle_factor: int
+  dst: int
+  length: int
+  mod_reg: int
+
+
+@dataclass
+class Permute(Instruction):
+  src: int
+  dst: int
+  config: int
+  length: int
+
+
+@dataclass
+class Barrier(Instruction):
+  pass
