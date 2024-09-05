@@ -2,21 +2,29 @@
 
 import isa
 import argparse
-
-def parse_arguments():
-  parser = argparse.ArgumentParser(description='Test program argument parser')
-  parser.add_argument('test_program', type=str, help='Path to the test program file')
-  args = parser.parse_args()
-  with open(args.test_program, 'r') as file:
-    test_program_content = file.read()
-  return test_program_content
-
-test_program_content = parse_arguments()
-
+import compiler
 
 
 def main():
-  print(f"Hello, World! {isa.OpCode.ModAdd}")
+  parser = argparse.ArgumentParser(
+      description="FHE Overlay Accelerator Compiler Runner.")
+
+  parser.add_argument("--test_program",
+                      "-t",
+                      type=str,
+                      help='Path to the test program file')
+  parser.add_argument("--assembly",
+                      "-a",
+                      type=str,
+                      default="/tmp/output.s",
+                      help='Path to the assembly output file')
+
+  args = parser.parse_args()
+  with open(args.test_program, 'r') as file:
+    test_program_content = file.read()
+
+  c = compiler.Compiler(test_program_content, args.assembly)
+  c.run()
 
 
 if __name__ == "__main__":
