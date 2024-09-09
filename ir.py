@@ -1,17 +1,28 @@
 from dataclasses import dataclass
-from enum import Enum
+from enum import Enum, auto
+
+import data_types
 
 
 class OpCode(Enum):
-  CoefficientElementwise = 3
-  Ntt = 4
-  Intt = 5
-  KskInnerProduct = 6
-  BaseConv = 7
-  Automorph = 8
-  Decompose = 9
-  ModUp = 10
-  ModDown = 11
+  LimbElementwise = auto()
+  Ntt = auto()
+  KskInnerProduct = auto()
+  Automorph = auto()
+  Decompose = auto()
+  ModUp = auto()
+  ModDown = auto()
+
+
+class LimbElementwiseOpCode(Enum):
+  Add = 0
+  Sub = 1
+  Mul = 2
+
+
+class NttOpCode(Enum):
+  Forward = 0
+  Inverse = 1
 
 
 @dataclass
@@ -20,6 +31,46 @@ class Operation():
 
 
 @dataclass
-class CoefficientElementwise(Operation):
-  num_limbs: int
-  level: int
+class LimbElementwise(Operation):
+  elementwise_opcode: LimbElementwiseOpCode
+  operand1: data_types.LimbVector
+  operand2: data_types.LimbVector
+  result: data_types.LimbVector
+
+
+@dataclass
+class Ntt(Operation):
+  ntt_opcode: NttOpCode
+  operand: data_types.LimbVector
+  result: data_types.LimbVector
+
+
+@dataclass
+class KskInnerProduct(Operation):
+  operand1: data_types.LimbMatrix
+  operand2: data_types.LimbVector
+  result: data_types.LimbVector
+
+
+@dataclass
+class Automorph(Operation):
+  operand: data_types.LimbVector
+  result: data_types.LimbVector
+
+
+@dataclass
+class Decompose(Operation):
+  operand: data_types.LimbVector
+  result: data_types.LimbVector
+
+
+@dataclass
+class ModUp(Operation):
+  operand: data_types.LimbVector
+  result: data_types.LimbVector
+
+
+@dataclass
+class ModDown(Operation):
+  operand: data_types.LimbVector
+  result: data_types.LimbVector

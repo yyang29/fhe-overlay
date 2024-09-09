@@ -4,29 +4,29 @@ from dataclasses import dataclass
 @dataclass
 class Limb():
   N: int
+  q: int
 
 
 @dataclass
-class LimbArray():
+class LimbVector():
   limb: Limb
   num_limbs: int
 
 
 @dataclass
-class Plaintext():
-  limb_array: LimbArray
-  level: int
+class LimbMatrix():
+  limb: Limb
+  num_rows: int
+  num_columns: int
 
-  @property
-  def num_limb_arrays(self) -> int:
-    return 1
+
+@dataclass
+class Plaintext():
+  limb_array: LimbVector
+  level: int
 
 
 @dataclass
 class Ciphertext():
-  limb_array: LimbArray
+  limb_array: LimbMatrix
   level: int
-
-  @property
-  def num_limb_arrays(self) -> int:
-    return 2
