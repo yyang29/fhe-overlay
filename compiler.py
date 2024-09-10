@@ -13,10 +13,10 @@ class Compiler():
     self._he_op_dag_builder = compiler_he_op_transformation.HeOpDagBuilder()
 
   def run(self):
-    self._build_ast()
+    self._frontend_passes()
 
-  def _build_ast(self):
-    """Part of the frontend of the compiler."""
+  def _frontend_passes(self):
+    """Generates IR as the output for frontend."""
 
     parsed_ast = ast.parse(self._test_program)
     transformed_ast = self._he_op_transformer.visit(parsed_ast)
@@ -27,6 +27,8 @@ class Compiler():
     dag = self._he_op_dag_builder.graph
 
     # Display the nodes and edges in the DAG with metadata
+    logging.info("-----------------")
+    logging.info(type(dag))
     logging.info(f"Nodes in the DAG: {dag.nodes(data=True)}")
     logging.info("Edges in the DAG with metadata:")
     for edge in dag.edges(data=True):
