@@ -28,6 +28,8 @@ class Compiler():
     self._he_op_dag_builder.visit(transformed_ast)
     dag = self._he_op_dag_builder.graph
 
+    self._he_op_dag_builder.add_num_limbs_attributes(self._initial_num_limbs)
+
     # Display the nodes and edges in the DAG with metadata
     logging.info("-----------------")
     logging.info(type(dag))

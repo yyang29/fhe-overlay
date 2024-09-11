@@ -152,8 +152,8 @@ class HeOpDagBuilder(ast.NodeVisitor):
     # Add node with additional metadata (line number, variables involved)
     self.add_node_with_metadata(node,
                                 op_type="CtCtAdd",
-                                left=node.left.id,
-                                right=node.right.id)
+                                num_input_limbs=0,
+                                num_output_limbs=0)
     # Add edges with metadata
     self.add_edge_with_metadata(node.left.id, self.current_var)
     self.add_edge_with_metadata(node.right.id, self.current_var)
@@ -162,8 +162,8 @@ class HeOpDagBuilder(ast.NodeVisitor):
     # Add node with additional metadata
     self.add_node_with_metadata(node,
                                 op_type="CtCtSub",
-                                left=node.left.id,
-                                right=node.right.id)
+                                num_input_limbs=0,
+                                num_output_limbs=0)
     # Add edges with metadata
     self.add_edge_with_metadata(node.left.id, self.current_var)
     self.add_edge_with_metadata(node.right.id, self.current_var)
@@ -172,8 +172,8 @@ class HeOpDagBuilder(ast.NodeVisitor):
     # Add node with additional metadata
     self.add_node_with_metadata(node,
                                 op_type="CtCtMult",
-                                left=node.left.id,
-                                right=node.right.id)
+                                num_input_limbs=0,
+                                num_output_limbs=0)
     # Add edges with metadata
     self.add_edge_with_metadata(node.left.id, self.current_var)
     self.add_edge_with_metadata(node.right.id, self.current_var)
@@ -182,8 +182,8 @@ class HeOpDagBuilder(ast.NodeVisitor):
     # Add node with additional metadata
     self.add_node_with_metadata(node,
                                 op_type="PtCtAdd",
-                                left=node.left.id,
-                                right=node.right.id)
+                                num_input_limbs=0,
+                                num_output_limbs=0)
     # Add edges with metadata
     self.add_edge_with_metadata(node.left.id, self.current_var)
     self.add_edge_with_metadata(node.right.id, self.current_var)
@@ -192,8 +192,8 @@ class HeOpDagBuilder(ast.NodeVisitor):
     # Add node with additional metadata
     self.add_node_with_metadata(node,
                                 op_type="PtCtSub",
-                                left=node.left.id,
-                                right=node.right.id)
+                                num_input_limbs=0,
+                                num_output_limbs=0)
     # Add edges with metadata
     self.add_edge_with_metadata(node.left.id, self.current_var)
     self.add_edge_with_metadata(node.right.id, self.current_var)
@@ -202,8 +202,8 @@ class HeOpDagBuilder(ast.NodeVisitor):
     # Add node with additional metadata
     self.add_node_with_metadata(node,
                                 op_type="PtCtMult",
-                                left=node.left.id,
-                                right=node.right.id)
+                                num_input_limbs=0,
+                                num_output_limbs=0)
     # Add edges with metadata
     self.add_edge_with_metadata(node.left.id, self.current_var)
     self.add_edge_with_metadata(node.right.id, self.current_var)
@@ -212,7 +212,8 @@ class HeOpDagBuilder(ast.NodeVisitor):
     # Add node with additional metadata
     self.add_node_with_metadata(node,
                                 op_type="RotateLeft",
-                                value=node.value.id,
+                                num_input_limbs=0,
+                                num_output_limbs=0,
                                 rotate_by=node.n.value)
     # Add edge with metadata
     self.add_edge_with_metadata(node.value.id, self.current_var)
@@ -221,19 +222,69 @@ class HeOpDagBuilder(ast.NodeVisitor):
     # Add node with additional metadata
     self.add_node_with_metadata(node,
                                 op_type="RotateRight",
-                                value=node.value.id,
+                                num_input_limbs=0,
+                                num_output_limbs=0,
                                 rotate_by=node.n.value)
     # Add edge with metadata
     self.add_edge_with_metadata(node.value.id, self.current_var)
 
   def visit_RescaleNode(self, node):
     # Add node with additional metadata
-    self.add_node_with_metadata(node, op_type="Rescale", value=node.value.id)
+    self.add_node_with_metadata(node,
+                                op_type="Rescale",
+                                num_input_limbs=0,
+                                num_output_limbs=0)
     # Add edge with metadata
     self.add_edge_with_metadata(node.value.id, self.current_var)
 
   def visit_BootstrapNode(self, node):
     # Add node with additional metadata
-    self.add_node_with_metadata(node, op_type="Bootstrap", value=node.value.id)
+    self.add_node_with_metadata(node,
+                                op_type="Bootstrap",
+                                num_input_limbs=0,
+                                num_output_limbs=0)
     # Add edge with metadata
     self.add_edge_with_metadata(node.value.id, self.current_var)
+
+  def add_num_limbs_attributes(self, initial_num_limbs):
+    # First, find the root nodes (nodes with no incoming edges)
+    root_nodes = [n for n in self.graph.nodes if self.graph.in_degree(n) == 0]
+
+    # Initialize num_input_limbs and num_output_limbs for root nodes
+    for root in root_nodes:
+      self.graph.nodes[root]['num_input_limbs'] = initial_num_limbs
+      self.graph.nodes[root]['num_output_limbs'] = initial_num_limbs
+
+    # Perform topological sort to ensure we process nodes in dependency order
+    topo_sorted_nodes = list(nx.topological_sort(self.graph))
+
+    # Propagate num_input_limbs and num_output_limbs through the graph
+    for node in topo_sorted_nodes:
+      # Get the current node's input and output limb values
+      num_input_limbs = self.graph.nodes[node].get('num_input_limbs', None)
+      if num_input_limbs is None:
+        continue  # Skip nodes where num_input_limbs is not set yet
+
+      op_type = self.graph.nodes[node].get('op', None)
+
+      # Update num_output_limbs based on the operation type
+      if (op_type == 'CtCtAdd' or op_type == 'PtCtAdd' or
+          op_type == 'CtCtSub' or op_type == 'CtCtSub'):
+        # For HeAdd: num_output_limbs = num_input_limbs
+        self.graph.nodes[node]['num_output_limbs'] = num_input_limbs
+
+      elif (op_type == 'CtCtMult' or op_type == 'PtCtMult' or
+            op_type == 'RotateLeft' or op_type == 'RotateRight' or
+            op_type == 'Rescale'):
+        # For HeMult: num_output_limbs = num_input_limbs - 1
+        self.graph.nodes[node]['num_output_limbs'] = num_input_limbs - 1
+
+      elif op_type == 'Bootstrap':
+        # For Bootstrap: num_output_limbs = 1
+        self.graph.nodes[node][
+            'num_output_limbs'] = num_input_limbs + initial_num_limbs
+
+      # Propagate num_output_limbs to the children (successors)
+      for child in self.graph.successors(node):
+        self.graph.nodes[child]['num_input_limbs'] = self.graph.nodes[node][
+            'num_output_limbs']
