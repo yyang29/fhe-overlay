@@ -55,7 +55,7 @@ def main():
   with open(args.test_program, 'r') as file:
     test_program_content = file.read()
 
-  c = compiler.Compiler(test_program_content, args.assembly)
+  c = compiler.Compiler(test_program_content, args.assembly, he_params.L)
   c.run()
 
 

@@ -6,9 +6,11 @@ import compiler_he_op_transformation
 
 class Compiler():
 
-  def __init__(self, test_program: str, assembly_output: str):
+  def __init__(self, test_program: str, assembly_output: str,
+               initial_num_limbs: int):
     self._test_program = test_program
     self._assembly_output = assembly_output
+    self._initial_num_limbs = initial_num_limbs
     self._he_op_transformer = compiler_he_op_transformation.HeOpTransformer()
     self._he_op_dag_builder = compiler_he_op_transformation.HeOpDagBuilder()
 

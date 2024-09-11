@@ -3,7 +3,39 @@ import networkx as nx
 
 
 # Custom AST Nodes
+class PtCtAddNode(ast.AST):
+  _fields = ['left', 'right']
+
+  def __init__(self, left, right):
+    self.left = left
+    self.right = right
+
+
+class PtCtSubNode(ast.AST):
+  _fields = ['left', 'right']
+
+  def __init__(self, left, right):
+    self.left = left
+    self.right = right
+
+
+class PtCtMultNode(ast.AST):
+  _fields = ['left', 'right']
+
+  def __init__(self, left, right):
+    self.left = left
+    self.right = right
+
+
 class CtCtAddNode(ast.AST):
+  _fields = ['left', 'right']
+
+  def __init__(self, left, right):
+    self.left = left
+    self.right = right
+
+
+class CtCtSubNode(ast.AST):
   _fields = ['left', 'right']
 
   def __init__(self, left, right):
@@ -42,6 +74,13 @@ class RescaleNode(ast.AST):
     self.value = value
 
 
+class BootstrapNode(ast.AST):
+  _fields = ['value']
+
+  def __init__(self, value):
+    self.value = value
+
+
 class HeOpTransformer(ast.NodeTransformer):
 
   def visit_Call(self, node):
@@ -50,8 +89,20 @@ class HeOpTransformer(ast.NodeTransformer):
     if func_name == 'CtCtAdd':
       return CtCtAddNode(left=node.args[0], right=node.args[1])
 
+    elif func_name == 'CtCtSub':
+      return CtCtSubNode(left=node.args[0], right=node.args[1])
+
     elif func_name == 'CtCtMult':
       return CtCtMultNode(left=node.args[0], right=node.args[1])
+
+    elif func_name == 'PtCtAdd':
+      return PtCtAddNode(left=node.args[0], right=node.args[1])
+
+    elif func_name == 'PtCtSub':
+      return PtCtSubNode(left=node.args[0], right=node.args[1])
+
+    elif func_name == 'PtCtMult':
+      return PtCtMultNode(left=node.args[0], right=node.args[1])
 
     elif func_name == 'RotateLeft':
       return RotateLeftNode(value=node.args[0], n=node.args[1])
@@ -62,37 +113,15 @@ class HeOpTransformer(ast.NodeTransformer):
     elif func_name == 'Rescale':
       return RescaleNode(value=node.args[0])
 
+    elif func_name == 'Bootstrap':
+      return BootstrapNode(value=node.args[0])
+
     # For all other calls, proceed with generic visit
     return self.generic_visit(node)
 
 
 import ast
 import networkx as nx
-
-
-# Custom AST Nodes
-class HeAddNode(ast.AST):
-  _fields = ['left', 'right']
-
-  def __init__(self, left, right):
-    self.left = left
-    self.right = right
-
-
-class HeMultNode(ast.AST):
-  _fields = ['left', 'right']
-
-  def __init__(self, left, right):
-    self.left = left
-    self.right = right
-
-
-class HeLeftRotateNode(ast.AST):
-  _fields = ['value', 'n']
-
-  def __init__(self, value, n):
-    self.value = value
-    self.n = n
 
 
 # Transformer that generates the DAG
@@ -126,14 +155,18 @@ class HeOpDagBuilder(ast.NodeVisitor):
                                 left=node.left.id,
                                 right=node.right.id)
     # Add edges with metadata
-    self.add_edge_with_metadata(node.left.id,
-                                self.current_var,
-                                level=self.current_level,
-                                var='left')
-    self.add_edge_with_metadata(node.right.id,
-                                self.current_var,
-                                level=self.current_level,
-                                var='right')
+    self.add_edge_with_metadata(node.left.id, self.current_var)
+    self.add_edge_with_metadata(node.right.id, self.current_var)
+
+  def visit_CtCtSubNode(self, node):
+    # Add node with additional metadata
+    self.add_node_with_metadata(node,
+                                op_type="CtCtSub",
+                                left=node.left.id,
+                                right=node.right.id)
+    # Add edges with metadata
+    self.add_edge_with_metadata(node.left.id, self.current_var)
+    self.add_edge_with_metadata(node.right.id, self.current_var)
 
   def visit_CtCtMultNode(self, node):
     # Add node with additional metadata
@@ -142,46 +175,65 @@ class HeOpDagBuilder(ast.NodeVisitor):
                                 left=node.left.id,
                                 right=node.right.id)
     # Add edges with metadata
-    self.add_edge_with_metadata(node.left.id,
-                                self.current_var,
-                                level=self.current_level,
-                                var='left')
-    self.add_edge_with_metadata(node.right.id,
-                                self.current_var,
-                                level=self.current_level,
-                                var='right')
+    self.add_edge_with_metadata(node.left.id, self.current_var)
+    self.add_edge_with_metadata(node.right.id, self.current_var)
+
+  def visit_PtCtAddNode(self, node):
+    # Add node with additional metadata
+    self.add_node_with_metadata(node,
+                                op_type="PtCtAdd",
+                                left=node.left.id,
+                                right=node.right.id)
+    # Add edges with metadata
+    self.add_edge_with_metadata(node.left.id, self.current_var)
+    self.add_edge_with_metadata(node.right.id, self.current_var)
+
+  def visit_PtCtSubNode(self, node):
+    # Add node with additional metadata
+    self.add_node_with_metadata(node,
+                                op_type="PtCtSub",
+                                left=node.left.id,
+                                right=node.right.id)
+    # Add edges with metadata
+    self.add_edge_with_metadata(node.left.id, self.current_var)
+    self.add_edge_with_metadata(node.right.id, self.current_var)
+
+  def visit_PtCtMultNode(self, node):
+    # Add node with additional metadata
+    self.add_node_with_metadata(node,
+                                op_type="PtCtMult",
+                                left=node.left.id,
+                                right=node.right.id)
+    # Add edges with metadata
+    self.add_edge_with_metadata(node.left.id, self.current_var)
+    self.add_edge_with_metadata(node.right.id, self.current_var)
 
   def visit_RotateLeftNode(self, node):
     # Add node with additional metadata
     self.add_node_with_metadata(node,
                                 op_type="RotateLeft",
                                 value=node.value.id,
-                                rotate_by=node.n)
+                                rotate_by=node.n.value)
     # Add edge with metadata
-    self.add_edge_with_metadata(node.value.id,
-                                self.current_var,
-                                level=self.current_level,
-                                var='value',
-                                rotate_by=node.n)
+    self.add_edge_with_metadata(node.value.id, self.current_var)
 
   def visit_RotateRightNode(self, node):
     # Add node with additional metadata
     self.add_node_with_metadata(node,
                                 op_type="RotateRight",
                                 value=node.value.id,
-                                rotate_by=node.n)
+                                rotate_by=node.n.value)
     # Add edge with metadata
-    self.add_edge_with_metadata(node.value.id,
-                                self.current_var,
-                                level=self.current_level,
-                                var='value',
-                                rotate_by=node.n)
+    self.add_edge_with_metadata(node.value.id, self.current_var)
 
   def visit_RescaleNode(self, node):
     # Add node with additional metadata
     self.add_node_with_metadata(node, op_type="Rescale", value=node.value.id)
     # Add edge with metadata
-    self.add_edge_with_metadata(node.value.id,
-                                self.current_var,
-                                level=self.current_level,
-                                var='value')
+    self.add_edge_with_metadata(node.value.id, self.current_var)
+
+  def visit_BootstrapNode(self, node):
+    # Add node with additional metadata
+    self.add_node_with_metadata(node, op_type="Bootstrap", value=node.value.id)
+    # Add edge with metadata
+    self.add_edge_with_metadata(node.value.id, self.current_var)

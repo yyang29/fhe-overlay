@@ -10,5 +10,6 @@ def func(a: data_types.Ciphertext,
   g = Rescale(e)
   h = Rescale(f)
   i = CtCtAdd(g, h)
+  j = Bootstrap(i)
 
-  return i
+  return j
