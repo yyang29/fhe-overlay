@@ -12,6 +12,8 @@ class OpCode(Enum):
   Decompose = auto()
   ModUp = auto()
   ModDown = auto()
+  Concat = auto()
+  Split = auto()
 
 
 class LimbElementwiseOpCode(Enum):
@@ -74,3 +76,17 @@ class ModUp(Operation):
 class ModDown(Operation):
   operand: data_types.LimbVector
   result: data_types.LimbVector
+
+
+@dataclass
+class Concat(Operation):
+  operand1: data_types.LimbVector
+  operand2: data_types.LimbVector
+  result: data_types.LimbMatrix
+
+
+@dataclass
+class Split(Operation):
+  operand: data_types.LimbMatrix
+  result1: data_types.LimbVector
+  result2: data_types.LimbVector
