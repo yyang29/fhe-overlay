@@ -43,7 +43,7 @@ class Compiler():
       logging.info(edge)
 
     # 4. Lower the DAG to IR.
-    dag = self._ir_builder.transform(dag)
+    # dag = self._ir_builder.transform(dag)
 
     # Display the nodes and edges in the DAG with metadata
     logging.info("-----------------")
