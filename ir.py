@@ -10,8 +10,7 @@ class OpCode(Enum):
   KskInnerProduct = auto()
   Automorph = auto()
   Decompose = auto()
-  ModUp = auto()
-  ModDown = auto()
+  BaseConv = auto()
   Concat = auto()
   Split = auto()
 
