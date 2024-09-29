@@ -11,7 +11,7 @@ class OpCode(Enum):
   Automorph = auto()
   Decompose = auto()
   BaseConv = auto()
-  Concat = auto()
+  Merge = auto()
   Split = auto()
 
 
@@ -73,7 +73,7 @@ class BaseConv(Operation):
 
 
 @dataclass
-class Concat(Operation):
+class Merge(Operation):
   operand1: data_types.LimbVector
   operand2: data_types.LimbVector
   result: data_types.LimbMatrix

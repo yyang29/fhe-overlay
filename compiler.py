@@ -52,3 +52,11 @@ class Compiler():
     logging.info("Edges in the DAG with metadata:")
     for edge in dag.edges(data=True):
       logging.info(edge)
+
+  def _backend_passes(self):
+    # 1. Dataflow selection
+    # 2. If fusion is enabled, add node group
+    # 3. Apply fusion (if enabled)
+    # 4. Topological sort for execution order
+    # 5. ISA generation
+    pass
