@@ -57,6 +57,7 @@ class KskInnerProduct(Operation):
 @dataclass
 class Automorph(Operation):
   operand: data_types.LimbVector
+  distance: data_types.Scalar
   result: data_types.LimbVector
 
 
@@ -67,13 +68,7 @@ class Decompose(Operation):
 
 
 @dataclass
-class ModUp(Operation):
-  operand: data_types.LimbVector
-  result: data_types.LimbVector
-
-
-@dataclass
-class ModDown(Operation):
+class BaseConv(Operation):
   operand: data_types.LimbVector
   result: data_types.LimbVector
 

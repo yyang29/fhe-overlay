@@ -30,3 +30,8 @@ class Plaintext():
 class Ciphertext():
   limb_array: LimbMatrix
   level: int
+
+
+@dataclass
+class Scalar():
+  value: int
