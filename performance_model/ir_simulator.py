@@ -1,9 +1,11 @@
 #!/usr/bin/env python
 
 import argparse
+from copy import deepcopy
 import csv
 
-from .. import he_parameters
+from compiler import he_parameters, ir, data_types
+from performance_model import latency_estimator
 
 
 def parse_input_csv(input_file):
@@ -23,8 +25,55 @@ def parse_input_csv(input_file):
     return data_dict
 
 
-def get_ir_ops(test_program_content):
-  pass
+def get_ir_ops(benchmark: str, he_params: he_parameters.HeParameters):
+  ir_ops = []
+  if benchmark == "CtCtAdd":
+    limb = data_types.Limb(N=he_params.N, q=he_params.q_i)
+    limb_vector = data_types.LimbVector(limb=limb, num_limbs=he_params.L)
+    elm = ir.LimbElementwise(opcode=ir.OpCode.LimbElementwise,
+                             elementwise_opcode=ir.LimbElementwiseOpCode.Add,
+                             operand1=limb_vector,
+                             operand2=limb_vector,
+                             result=limb_vector)
+    ir_ops.append(elm)
+    elm2 = deepcopy(elm)
+    ir_ops.append(elm2)
+  elif benchmark == "PtCtAdd":
+    pass
+  elif benchmark == "CtCtMul":
+    pass
+  elif benchmark == "PtCtMul":
+    pass
+  elif benchmark == "Rescale":
+    pass
+  elif benchmark == "Rotate":
+    pass
+  elif benchmark == "Bootstrap":
+    pass
+  elif benchmark == "MatMul0":
+    pass
+  elif benchmark == "MatMul1":
+    pass
+  elif benchmark == "MatMul2":
+    pass
+  elif benchmark == "MatMul3":
+    pass
+  elif benchmark == "Conv0":
+    pass
+  elif benchmark == "Conv1":
+    pass
+  elif benchmark == "Conv2":
+    pass
+  elif benchmark == "Conv3":
+    pass
+  elif benchmark == "Mnist":
+    pass
+  elif benchmark == "Cifar":
+    pass
+  elif benchmark == "Resnet20":
+    pass
+  else:
+    raise ValueError(f"Invalid benchmark: {benchmark}.")
 
 
 def main():
@@ -57,7 +106,10 @@ def main():
                                          params['log_q_i'])
   he_params.display_parameters()
 
-  ir_ops = []
+  ir_ops = get_ir_ops(args.benchmark)
+
+  estimator = latency_estimator.LatencyEstimator(he_params)
+  estimator.estimate_latency(ir_ops)
 
 
 if __name__ == "__main__":
