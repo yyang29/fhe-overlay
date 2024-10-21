@@ -1,7 +1,7 @@
 import ast
 import logging
-import compiler_he_op_transformation
-import compiler_subroutine_lowering
+from compiler import compiler_he_op_transformation
+from compiler import compiler_subroutine_lowering
 
 
 class Compiler():

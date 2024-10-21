@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 from enum import Enum, auto
 
-import data_types
+from compiler import data_types
 
 
 class MemoryLocation(Enum):

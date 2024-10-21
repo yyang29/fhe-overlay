@@ -4,7 +4,7 @@ from dataclasses import dataclass
 @dataclass
 class Limb():
   N: int
-  q: int
+  q: int = 0
 
 
 @dataclass

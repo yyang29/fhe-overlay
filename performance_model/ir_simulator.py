@@ -27,7 +27,7 @@ def parse_input_csv(input_file):
 
 def get_ir_ops(benchmark: str, he_params: he_parameters.HeParameters):
   ir_ops = []
-  if benchmark == "CtCtAdd":
+  if benchmark == "CtCtAdd" or benchmark == "PtCttAdd":
     limb = data_types.Limb(N=he_params.N, q=he_params.q_i)
     limb_vector = data_types.LimbVector(limb=limb, num_limbs=he_params.L)
     elm = ir.LimbElementwise(opcode=ir.OpCode.LimbElementwise,
@@ -38,8 +38,6 @@ def get_ir_ops(benchmark: str, he_params: he_parameters.HeParameters):
     ir_ops.append(elm)
     elm2 = deepcopy(elm)
     ir_ops.append(elm2)
-  elif benchmark == "PtCtAdd":
-    pass
   elif benchmark == "CtCtMul":
     pass
   elif benchmark == "PtCtMul":

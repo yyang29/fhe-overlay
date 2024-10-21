@@ -1,11 +1,11 @@
 #!/usr/bin/env python
 
 import argparse
-import compiler
 import csv
 
-import isa
-import he_parameters
+from compiler import compiler_lib
+from compiler import isa
+from compiler import he_parameters
 
 
 def parse_input_csv(input_file):
@@ -55,7 +55,7 @@ def main():
   with open(args.test_program, 'r') as file:
     test_program_content = file.read()
 
-  c = compiler.Compiler(test_program_content, args.assembly, he_params.L)
+  c = compiler_lib.Compiler(test_program_content, args.assembly, he_params.L)
   c.run()
 
 
