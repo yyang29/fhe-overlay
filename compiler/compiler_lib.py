@@ -26,26 +26,25 @@ class Compiler():
 
     # 1. Generate program AST.
     logging.info("-----------------")
-    logging.info("AST construction:")
+    logging.info("AST construction and annotation:")
     parsed_ast = ast.parse(self._test_program)
     # 2. Transform the AST to add metadata for HE operations.
     transformed_ast = self._he_op_transformer.visit(parsed_ast)
     logging.info(ast.dump(transformed_ast))
     logging.info("-----------------\n")
 
+    # 3. Build a DAG of HE operations and num_limbs.
     logging.info("-----------------")
     self._he_op_dag_builder.visit(transformed_ast)
     dag = self._he_op_dag_builder.graph
     self._he_op_dag_builder.add_num_limbs_attributes(self._initial_num_limbs)
 
-    # 3. Build a DAG of HE operations and num_limbs.
     # Display the nodes and edges in the DAG with metadata
     logging.info("HE Operations DAG construction:")
-    logging.info(type(dag))
     logging.info(f"Nodes in the DAG: {dag.nodes(data=True)}")
     logging.info("Edges in the DAG with metadata:")
-    for edge in dag.edges(data=True):
-      logging.info(edge)
+    for src, dst, metadata in dag.edges(data=True):
+      logging.info(f"edge from {src} to {dst} with metadata {metadata}")
 
     labels = {node: data.get('op', '') for node, data in dag.nodes(data=True)}
     plt.figure(figsize=(8, 6))
@@ -61,7 +60,10 @@ class Compiler():
     logging.info("-----------------\n")
 
     # 4. Lower the DAG to IR.
-    # dag = self._ir_builder.transform(dag)
+    logging.info("-----------------")
+    logging.info("IR DAG construction:")
+    dag = self._ir_builder.transform(dag)
+    logging.info(f"Nodes in the DAG: {dag.nodes(data=True)}")
 
     # Display the nodes and edges in the DAG with metadata
     # logging.info("-----------------")

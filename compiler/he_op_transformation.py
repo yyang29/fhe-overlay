@@ -120,10 +120,6 @@ class HeOpTransformer(ast.NodeTransformer):
     return self.generic_visit(node)
 
 
-import ast
-import networkx as nx
-
-
 # Transformer that generates the DAG
 class HeOpDagBuilder(ast.NodeVisitor):
 
