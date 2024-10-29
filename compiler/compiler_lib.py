@@ -2,8 +2,8 @@ import ast
 import logging
 import matplotlib.pyplot as plt
 import networkx as nx
-from compiler import compiler_he_op_transformation
-from compiler import compiler_subroutine_lowering
+from compiler import he_op_transformation
+from compiler import subroutine_lowering
 
 
 class Compiler():
@@ -13,9 +13,9 @@ class Compiler():
     self._test_program = test_program
     self._assembly_output = assembly_output
     self._initial_num_limbs = initial_num_limbs
-    self._he_op_transformer = compiler_he_op_transformation.HeOpTransformer()
-    self._he_op_dag_builder = compiler_he_op_transformation.HeOpDagBuilder()
-    self._ir_builder = compiler_subroutine_lowering.SubroutineLowering()
+    self._he_op_transformer = he_op_transformation.HeOpTransformer()
+    self._he_op_dag_builder = he_op_transformation.HeOpDagBuilder()
+    self._ir_builder = subroutine_lowering.SubroutineLowering()
 
   def run(self):
     self._frontend_passes()
@@ -31,7 +31,7 @@ class Compiler():
     # 2. Transform the AST to add metadata for HE operations.
     transformed_ast = self._he_op_transformer.visit(parsed_ast)
     logging.info(ast.dump(transformed_ast))
-    logging.info("-----------------")
+    logging.info("-----------------\n")
 
     logging.info("-----------------")
     self._he_op_dag_builder.visit(transformed_ast)
@@ -58,7 +58,7 @@ class Compiler():
             font_color='black',
             edge_color='gray')
     plt.savefig("he_ops_graph.png", format="PNG")
-    logging.info("-----------------")
+    logging.info("-----------------\n")
 
     # 4. Lower the DAG to IR.
     # dag = self._ir_builder.transform(dag)
