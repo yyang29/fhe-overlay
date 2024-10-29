@@ -5,7 +5,7 @@ from compiler import data_types
 
 
 class MemoryLocation(Enum):
-  Ddr = auto()
+  Dram = auto()
   Scratchpad = auto()
 
 
@@ -34,8 +34,8 @@ class NttOpCode(Enum):
 @dataclass(kw_only=True)
 class Operation():
   opcode: OpCode
-  input_location: MemoryLocation = MemoryLocation.Ddr
-  output_location: MemoryLocation = MemoryLocation.Ddr
+  input_location: MemoryLocation = MemoryLocation.Dram
+  output_location: MemoryLocation = MemoryLocation.Dram
 
 
 @dataclass(kw_only=True)
