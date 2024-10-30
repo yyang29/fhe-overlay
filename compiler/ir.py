@@ -10,14 +10,14 @@ class MemoryLocation(Enum):
 
 
 class OpCode(Enum):
-  LimbElementwise = auto()
-  Ntt = auto()
-  KskInnerProduct = auto()
-  Automorph = auto()
-  Decompose = auto()
-  BaseConv = auto()
-  Merge = auto()
-  Split = auto()
+  LimbElementwise = "Limbelementwise"
+  Ntt = "Ntt"
+  KskInnerProduct = "KskInnerProduct"
+  Automorph = "Automorph"
+  Decompose = "Decompose"
+  BaseConv = "BaseConv"
+  Merge = "Merge"
+  Split = "Split"
 
 
 class LimbElementwiseOpCode(Enum):
@@ -36,6 +36,9 @@ class Operation():
   opcode: OpCode
   input_location: MemoryLocation = MemoryLocation.Dram
   output_location: MemoryLocation = MemoryLocation.Dram
+
+  def __str__(self):
+    return f"{self.opcode}"[7:]
 
 
 @dataclass(kw_only=True)

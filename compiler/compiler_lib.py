@@ -8,14 +8,15 @@ from compiler import subroutine_lowering
 
 class Compiler():
 
-  def __init__(self, test_program: str, assembly_output: str,
+  def __init__(self, test_program: str, assembly_output: str, N: int,
                initial_num_limbs: int):
     self._test_program = test_program
     self._assembly_output = assembly_output
+    self._poly_degree = N
     self._initial_num_limbs = initial_num_limbs
     self._he_op_transformer = he_op_transformation.HeOpTransformer()
     self._he_op_dag_builder = he_op_transformation.HeOpDagBuilder()
-    self._ir_builder = subroutine_lowering.SubroutineLowering()
+    self._ir_builder = subroutine_lowering.SubroutineLowering(self._poly_degree)
 
   def run(self):
     self._frontend_passes()
@@ -46,8 +47,14 @@ class Compiler():
     for src, dst, metadata in dag.edges(data=True):
       logging.info(f"edge from {src} to {dst} with metadata {metadata}")
 
-    labels = {node: data.get('op', '') for node, data in dag.nodes(data=True)}
-    plt.figure(figsize=(8, 6))
+    labels = {}
+    for node, data in dag.nodes(data=True):
+      label = data.get('op', '')
+      if label == '':
+        labels[node] = node
+      else:
+        labels[node] = label
+    plt.figure(figsize=(18, 16))
     nx.draw(dag,
             with_labels=True,
             labels=labels,
@@ -63,7 +70,26 @@ class Compiler():
     logging.info("-----------------")
     logging.info("IR DAG construction:")
     dag = self._ir_builder.transform(dag)
+
     logging.info(f"Nodes in the DAG: {dag.nodes(data=True)}")
+    labels = {}
+    for node, data in dag.nodes(data=True):
+      label = data.get('ir_op', '')
+      if label == '':
+        labels[node] = node if data.get('op') is None else data.get('op')
+      else:
+        labels[node] = str(label)
+    plt.figure(figsize=(18, 16))
+    nx.draw(dag,
+            with_labels=True,
+            labels=labels,
+            node_color='skyblue',
+            node_size=500,
+            font_size=15,
+            font_color='black',
+            edge_color='gray')
+    plt.savefig("ir_graph.png", format="PNG")
+    logging.info("-----------------\n")
 
     # Display the nodes and edges in the DAG with metadata
     # logging.info("-----------------")
