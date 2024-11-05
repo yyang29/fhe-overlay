@@ -8,25 +8,37 @@ from compiler import ir
 class SubroutineLowering():
   """Lower the DAG of HE operations to IR."""
 
-  def __init__(self, poly_degree):
-    self._poly_degree = poly_degree
+  def __init__(self, he_params):
+    self._he_params = he_params
     self._ir_dag = nx.DiGraph()
 
   def transform(self, dag):
     self._ir_dag = dag
 
     for node in list(dag.nodes):  # Iterate over a list of original nodes
-      op_type = dag.nodes[node].get('op')
+      op_type = dag.nodes[node].get('op', '')
 
-      if op_type == 'CtCtAdd':
-        self._transform_ctct_add(node)
+      if op_type in ['CtCtAdd', 'CtCtSub']:
+        self._transform_ctct_add_sub(node)
+      elif op_type in ['PtCtAdd', 'PtCtSub']:
+        self._transform_ptct_add_sub(node)
+      elif op_type == 'CtCtMul':
+        self._transform_ctct_mul(node)
+      elif op_type == 'PtCtMul':
+        pass
+      elif 'Rotate' in op_type:
+        pass
+      elif op_type == 'Rescale':
+        self._transform_rescale(node)
+      elif op_type == 'Bootstrap':
+        pass
 
     return self._ir_dag
 
-  def _transform_ctct_add(self, node):
+  def _transform_ctct_add_sub(self, node):
     attrs = self._ir_dag.nodes[node]
     num_input_limbs = attrs.get('num_input_limbs')
-    limb = data_types.Limb(self._poly_degree)
+    limb = data_types.Limb(self._he_params.N)
 
     input_limb_matrix = data_types.LimbMatrix(limb, 2, num_input_limbs)
     limb_vector = data_types.LimbVector(limb, num_input_limbs)
@@ -88,8 +100,181 @@ class SubroutineLowering():
     # Finally, remove the original CtCtAdd node
     self._ir_dag.remove_node(node)
 
-  def _transform_ctct_sub(self, node):
-    pass
+  def _transform_ptct_add_sub(self, node):
+    attrs = self._ir_dag.nodes[node]
+    num_input_limbs = attrs.get('num_input_limbs')
+    limb = data_types.Limb(self._he_params.N)
+
+    input_limb_matrix = data_types.LimbMatrix(limb, 2, num_input_limbs)
+    limb_vector = data_types.LimbVector(limb, num_input_limbs)
+
+    split_op = ir.Split(opcode=ir.OpCode.Split,
+                        operand=input_limb_matrix,
+                        result1=limb_vector,
+                        result2=limb_vector)
+    elementwise_op = ir.LimbElementwise(
+        opcode=ir.OpCode.LimbElementwise,
+        elementwise_opcode=ir.LimbElementwiseOpCode.Add,
+        operand1=limb_vector,
+        operand2=limb_vector,
+        result=limb_vector)
+    merge_op = ir.Merge(opcode=ir.OpCode.Merge,
+                        operand1=limb_vector,
+                        operand2=limb_vector,
+                        result=input_limb_matrix)
+
+    # Define new nodes
+    split_node = f"{node}_split"
+    elementwise1 = f"{node}_elementwise1"
+    elementwise2 = f"{node}_elementwise2"
+    merge_node = f"{node}_merge"
+
+    # Add new nodes with respective attributes
+    self._ir_dag.add_node(split_node, ir_op=split_op)
+    self._ir_dag.add_node(elementwise1, ir_op=elementwise_op)
+    self._ir_dag.add_node(elementwise2, ir_op=elementwise_op)
+    self._ir_dag.add_node(merge_node, ir_op=merge_op)
+
+    # Redirect edges
+    # 1. Connect predecessors of the original node to the split node
+    predecessors = list(self._ir_dag.predecessors(node))
+    self._ir_dag.add_edge(predecessors[0], split_node)
+    for pred in predecessors:
+      self._ir_dag.remove_edge(pred, node)
+
+    # 2. Connect split node to the two element-wise add nodes
+    self._ir_dag.add_edge(split_node, elementwise1)
+    self._ir_dag.add_edge(split_node, elementwise2)
+    self._ir_dag.add_edge(predecessors[1], elementwise1)
+    self._ir_dag.add_edge(predecessors[1], elementwise2)
+
+    # 3. Connect element-wise add nodes to the merge node
+    self._ir_dag.add_edge(elementwise1, merge_node)
+    self._ir_dag.add_edge(elementwise2, merge_node)
+
+    # 4. Connect the merge node to the original node's successors
+    successors = list(self._ir_dag.successors(node))
+    for succ in successors:
+      self._ir_dag.add_edge(merge_node, succ)
+      self._ir_dag.remove_edge(node, succ)
+
+    # Finally, remove the original CtCtAdd node
+    self._ir_dag.remove_node(node)
 
   def _transform_ctct_mul(self, node):
-    pass
+    attrs = self._ir_dag.nodes[node]
+    num_input_limbs = attrs.get('num_input_limbs')
+    num_output_limbs = attrs.get('num_output_limbs')
+    limb = data_types.Limb(self._he_params.N)
+    input_limb_matrix = data_types.LimbMatrix(limb, 2, num_input_limbs)
+    input_limb_vector = data_types.LimbVector(limb, num_input_limbs)
+    decomposed_limb_matrix = data_types.LimbMatrix(limb, self._he_params.beta,
+                                                   self._he_params.alpha)
+    decomposed_limb_vector = data_types.LimbVector(limb, self._he_params.alpha)
+    mod_up_limb_vector = data_types.LimbVector(
+        limb, self._he_params.alpha * self._he_params.beta +
+        self._he_params.log_P - 1)
+    ksk_limb_matrix = data_types.LimbMatrix(limb, self._he_params.beta, 1)
+    ksk_output_limb_matrix = data_types.LimbVector(
+        limb, 2, self._he_params.alpha * self._he_params.beta +
+        self._he_params.log_P - 1)
+    ksk_output_limb_vector = data_types.LimbVector(
+        limb, self._he_params.alpha * self._he_params.beta +
+        self._he_params.log_P - 1)
+    mod_down_limb_vector = data_types.LimbVector(limb, num_output_limbs)
+    output_limb_matrix = data_types.LimbMatrix(limb, 2, num_output_limbs)
+
+    split_op = ir.Split(opcode=ir.OpCode.Split,
+                        operand=input_limb_matrix,
+                        result1=input_limb_vector,
+                        result2=input_limb_vector)
+    split1_node = f"{node}_split1"
+    self._ir_dag.add_node(split1_node, ir_op=split_op)
+    split2_node = f"{node}_split2"
+    self._ir_dag.add_node(split2_node, ir_op=split_op)
+
+    elementwise_op = ir.LimbElementwise(
+        opcode=ir.OpCode.LimbElementwise,
+        elementwise_opcode=ir.LimbElementwiseOpCode.Mul,
+        operand1=input_limb_vector,
+        operand2=input_limb_vector,
+        result=input_limb_vector)
+    elementwise1_node = f"{node}_elementwise1"
+    elementwise2_node = f"{node}_elementwise2"
+    elementwise3_node = f"{node}_elementwise3"
+    self._ir_dag.add_node(elementwise1_node, ir_op=elementwise_op)
+    self._ir_dag.add_node(elementwise2_node, ir_op=elementwise_op)
+    self._ir_dag.add_node(elementwise3_node, ir_op=elementwise_op)
+
+    decompose_op = ir.Decompose(opcode=ir.OpCode.Decompose,
+                                operand=input_limb_vector,
+                                result=decomposed_limb_matrix)
+    decompose_node = f"{node}_decompose"
+    self._ir_dag.add_node(decompose_node, ir_op=decompose_op)
+
+    decompose_split_op = ir.Split(opcode=ir.OpCode.Split,
+                                  operand=decomposed_limb_matrix,
+                                  result1=input_limb_vector,
+                                  result2=input_limb_vector)
+    for i in range(self._he_params.beta):
+      decompose_split_node = f"{node}_decompose_split_{i}"
+      self._ir_dag.add_node(decompose_split_node, ir_op=decompose_split_op)
+
+  def _transform_rescale(self, node):
+    attrs = self._ir_dag.nodes[node]
+    num_input_limbs = attrs.get('num_input_limbs')
+    num_output_limbs = attrs.get('num_output_limbs')
+    limb = data_types.Limb(self._he_params.N)
+
+    input_limb_matrix = data_types.LimbMatrix(limb, 2, num_input_limbs)
+    input_limb_vector = data_types.LimbVector(limb, num_input_limbs)
+    output_limb_vector = data_types.LimbVector(limb, num_output_limbs)
+    output_limb_matrix = data_types.LimbMatrix(limb, 2, num_output_limbs)
+
+    split_op = ir.Split(opcode=ir.OpCode.Split,
+                        operand=input_limb_matrix,
+                        result1=input_limb_vector,
+                        result2=input_limb_vector)
+    base_conv_op = ir.BaseConv(opcode=ir.OpCode.BaseConv,
+                               operand=input_limb_vector,
+                               result=output_limb_vector)
+    merge_op = ir.Merge(opcode=ir.OpCode.Merge,
+                        operand1=output_limb_vector,
+                        operand2=output_limb_vector,
+                        result=output_limb_matrix)
+
+    # Define new nodes
+    split_node = f"{node}_split"
+    base_conv1_node = f"{node}_base_conv1"
+    base_conv2_node = f"{node}_base_conv2"
+    merge_node = f"{node}_merge"
+
+    # Add new nodes with respective attributes
+    self._ir_dag.add_node(split_node, ir_op=split_op)
+    self._ir_dag.add_node(base_conv1_node, ir_op=base_conv_op)
+    self._ir_dag.add_node(base_conv2_node, ir_op=base_conv_op)
+    self._ir_dag.add_node(merge_node, ir_op=merge_op)
+
+    # Redirect edges
+    # 1. Connect predecessors of the original node to the split node
+    predecessors = list(self._ir_dag.predecessors(node))
+    assert len(predecessors) == 1
+    self._ir_dag.add_edge(predecessors[0], split_node)
+    self._ir_dag.remove_edge(predecessors[0], node)
+
+    # 2. Connect split node to the two element-wise add nodes
+    self._ir_dag.add_edge(split_node, base_conv1_node)
+    self._ir_dag.add_edge(split_node, base_conv2_node)
+
+    # 3. Connect element-wise add nodes to the merge node
+    self._ir_dag.add_edge(base_conv1_node, merge_node)
+    self._ir_dag.add_edge(base_conv2_node, merge_node)
+
+    # 4. Connect the merge node to the original node's successors
+    successors = list(self._ir_dag.successors(node))
+    for succ in successors:
+      self._ir_dag.add_edge(merge_node, succ)
+      self._ir_dag.remove_edge(node, succ)
+
+    # Finally, remove the original CtCtAdd node
+    self._ir_dag.remove_node(node)

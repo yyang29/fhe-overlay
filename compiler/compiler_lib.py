@@ -8,15 +8,13 @@ from compiler import subroutine_lowering
 
 class Compiler():
 
-  def __init__(self, test_program: str, assembly_output: str, N: int,
-               initial_num_limbs: int):
+  def __init__(self, test_program: str, assembly_output: str, he_params):
     self._test_program = test_program
     self._assembly_output = assembly_output
-    self._poly_degree = N
-    self._initial_num_limbs = initial_num_limbs
+    self._he_params = he_params
     self._he_op_transformer = he_op_transformation.HeOpTransformer()
     self._he_op_dag_builder = he_op_transformation.HeOpDagBuilder()
-    self._ir_builder = subroutine_lowering.SubroutineLowering(self._poly_degree)
+    self._ir_builder = subroutine_lowering.SubroutineLowering(self._he_params)
 
   def run(self):
     self._frontend_passes()
