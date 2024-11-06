@@ -9,6 +9,11 @@ class MemoryLocation(Enum):
   Scratchpad = auto()
 
 
+class DataflowType(Enum):
+  Limb = auto()  # Row by row
+  Coefficient = auto()  # Column by column
+
+
 class OpCode(Enum):
   LimbElementwise = "Limbelementwise"
   Ntt = "Ntt"
@@ -36,6 +41,8 @@ class Operation():
   opcode: OpCode
   input_location: MemoryLocation = MemoryLocation.Dram
   output_location: MemoryLocation = MemoryLocation.Dram
+  dataflow: DataflowType = DataflowType.Limb
+  node_group: int = 0
 
   def __str__(self):
     return f"{self.opcode}"[7:]
@@ -79,6 +86,7 @@ class Decompose(Operation):
 
 @dataclass(kw_only=True)
 class BaseConv(Operation):
+  dataflow = DataflowType.Coefficient
   operand: data_types.LimbVector
   result: data_types.LimbVector
 

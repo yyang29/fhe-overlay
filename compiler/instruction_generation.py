@@ -1,5 +1,6 @@
 import logging
 import networkx as nx
+import matplotlib.pyplot as plt
 
 from compiler import data_types
 from compiler import ir
@@ -27,8 +28,30 @@ class InstructionGeneration():
 
   def transform(self, dag, apply_optimization):
     if apply_optimization:
-      # Apply optimizations
-      pass
+      # Remove Split and Merge nodes.
+      dag = self._remove_merge_split_pairs(dag)
+      labels = {}
+      for node, data in dag.nodes(data=True):
+        label = data.get('ir_op', '')
+        if label == '':
+          labels[node] = node if data.get('op') is None else data.get('op')
+        else:
+          labels[node] = str(label)
+      plt.figure(figsize=(18, 16))
+      nx.draw(dag,
+              with_labels=True,
+              labels=labels,
+              node_color='skyblue',
+              node_size=500,
+              font_size=15,
+              font_color='black',
+              edge_color='gray')
+      plt.savefig("backend_graph.png", format="PNG")
+
+      # Annotate nodes with node groups.
+
+      # Produce instruction sequences based on hierarchical topological sort.
+
     else:
       topological_order = list(nx.topological_sort(dag))
       logging.info("Topological Sort Order with Node Data:")
@@ -37,3 +60,35 @@ class InstructionGeneration():
         self._instructions.append(dag.nodes[node])
 
     return self._instructions
+
+  def _remove_merge_split_pairs(self, graph):
+    nodes = list(graph.nodes)
+    for node in nodes:
+      if node is not None:
+        # Check if the node is a 'merge' node
+        logging.info(f"Node: {node} {graph.nodes[node].get('ir_op')}")
+        if (graph.nodes[node].get('ir_op') is not None and
+            graph.nodes[node].get('ir_op').opcode == ir.OpCode.Merge):
+          successors = list(graph.successors(node))
+
+          # Check if the successor is a 'split' node
+          if (len(successors) == 1 and
+              graph.nodes[successors[0]].get('ir_op').opcode
+              == ir.OpCode.Split):
+            split_node = successors[0]
+            nodes.remove(split_node)
+
+            # Get predecessors of the merge node and successors of the split node
+            merge_predecessors = list(graph.predecessors(node))
+            split_successors = list(graph.successors(split_node))
+
+            # Remove merge and split nodes
+            graph.remove_node(node)
+            graph.remove_node(split_node)
+
+            # Connect each predecessor of merge to each successor of split
+            for pred in merge_predecessors:
+              for succ in split_successors:
+                graph.add_edge(pred, succ)
+
+    return graph
