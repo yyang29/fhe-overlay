@@ -42,6 +42,10 @@ def main():
                       "-p",
                       required=True,
                       help="HE parameter of the test program.")
+  parser.add_argument("--apply_optimization",
+                      "-o",
+                      action='store_true',
+                      help="Apply optimizations to the test program.")
 
   args = parser.parse_args()
 
@@ -55,7 +59,8 @@ def main():
   with open(args.test_program, 'r') as file:
     test_program_content = file.read()
 
-  c = compiler_lib.Compiler(test_program_content, args.assembly, he_params)
+  c = compiler_lib.Compiler(test_program_content, args.assembly, he_params,
+                            args.apply_optimization)
   c.run()
 
 

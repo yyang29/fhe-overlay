@@ -58,9 +58,10 @@ class Ntt(Operation):
 
 @dataclass(kw_only=True)
 class KskInnerProduct(Operation):
+  alpha: int
   operand1: data_types.LimbMatrix
-  operand2: data_types.LimbVector
-  result: data_types.LimbVector
+  operand2: data_types.LimbMatrix
+  result: data_types.LimbMatrix
 
 
 @dataclass(kw_only=True)

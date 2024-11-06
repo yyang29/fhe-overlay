@@ -8,13 +8,15 @@ from compiler import subroutine_lowering
 
 class Compiler():
 
-  def __init__(self, test_program: str, assembly_output: str, he_params):
+  def __init__(self, test_program: str, assembly_output: str, he_params,
+               apply_optimization: bool):
     self._test_program = test_program
     self._assembly_output = assembly_output
     self._he_params = he_params
     self._he_op_transformer = he_op_transformation.HeOpTransformer()
     self._he_op_dag_builder = he_op_transformation.HeOpDagBuilder()
     self._ir_builder = subroutine_lowering.SubroutineLowering(self._he_params)
+    self._apply_optimization = apply_optimization
 
   def run(self):
     self._frontend_passes()
@@ -36,7 +38,7 @@ class Compiler():
     logging.info("-----------------")
     self._he_op_dag_builder.visit(transformed_ast)
     dag = self._he_op_dag_builder.graph
-    self._he_op_dag_builder.add_num_limbs_attributes(self._initial_num_limbs)
+    self._he_op_dag_builder.add_num_limbs_attributes(self._he_params.L)
 
     # Display the nodes and edges in the DAG with metadata
     logging.info("HE Operations DAG construction:")
@@ -88,6 +90,12 @@ class Compiler():
             edge_color='gray')
     plt.savefig("ir_graph.png", format="PNG")
     logging.info("-----------------\n")
+
+    # If merge is followed by a split, they can be removed from the graph and no memory-to-memory copy is needed.
+    # Annotate with dataflow type - add node group based on graph traversal.
+    #  - BFS. First node is specified with a group. As long as its children have the same dataflow type, they are added to the same group.
+    # Apply memory location hint for fusion.
+    # Apply hierarchical topological sort for execution order.
 
     # Display the nodes and edges in the DAG with metadata
     # logging.info("-----------------")
