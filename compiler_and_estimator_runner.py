@@ -2,9 +2,9 @@
 
 import argparse
 import csv
+import logging
 
 from compiler import compiler_lib
-from compiler import isa
 from compiler import he_parameters
 
 
@@ -61,7 +61,9 @@ def main():
 
   c = compiler_lib.Compiler(test_program_content, args.assembly, he_params,
                             args.apply_optimization)
-  c.run()
+  instructions = c.run()
+
+  logging.info(instructions[2])
 
 
 if __name__ == "__main__":

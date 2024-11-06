@@ -4,6 +4,7 @@ import matplotlib.pyplot as plt
 import networkx as nx
 from compiler import he_op_transformation
 from compiler import subroutine_lowering
+from compiler import instruction_generation
 
 
 class Compiler():
@@ -16,11 +17,14 @@ class Compiler():
     self._he_op_transformer = he_op_transformation.HeOpTransformer()
     self._he_op_dag_builder = he_op_transformation.HeOpDagBuilder()
     self._ir_builder = subroutine_lowering.SubroutineLowering(self._he_params)
+    self._isa_generator = instruction_generation.InstructionGeneration(
+        self._he_params)
     self._apply_optimization = apply_optimization
 
   def run(self):
-    self._frontend_passes()
-    self._backend_passes()
+    dag = self._frontend_passes()
+    instructions = self._backend_passes(dag)
+    return instructions
 
   def _frontend_passes(self):
     """Generates IR as the output for frontend."""
@@ -97,17 +101,10 @@ class Compiler():
       logging.info(edge)
     logging.info("-----------------")
 
-  def _backend_passes(self):
-    # 1. Dataflow selection
-    # 2. If fusion is enabled, add node group
-    # 3. Apply fusion (if enabled)
-    # 4. Topological sort for execution order
-    # 5. ISA generation
+    return dag
 
-    # If merge is followed by a split, they can be removed from the graph and no memory-to-memory copy is needed.
-    # All the following are enabled when apply_optimization is True. Else, each subroutine is executed as is with memory location in HBM.
-    # Annotate with dataflow type - add node group based on graph traversal.
-    #  - BFS. First node is specified with a group. As long as its children have the same dataflow type, they are added to the same group.
-    # Apply memory location hint for fusion.
-    # Apply hierarchical topological sort for execution order.
-    pass
+  def _backend_passes(self, dag):
+    """Generates ISA as the output for backend."""
+
+    instructions = self._isa_generator.transform(dag, self._apply_optimization)
+    return instructions
