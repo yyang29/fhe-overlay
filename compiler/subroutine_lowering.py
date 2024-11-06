@@ -32,6 +32,8 @@ class SubroutineLowering():
         self._transform_rescale(node)
       elif op_type == 'Bootstrap':
         pass
+      elif op_type == '':
+        dag.nodes[node]['ir_op'] = ir.Operation(opcode=ir.OpCode.NoOp)
 
     return self._ir_dag
 
@@ -235,6 +237,7 @@ class SubroutineLowering():
     self._ir_dag.add_edge(decompose_node, decompose_split_node)
 
     mod_up_op = ir.BaseConv(opcode=ir.OpCode.BaseConv,
+                            dataflow=ir.DataflowType.Coefficient,
                             operand=decomposed_limb_vector,
                             result=mod_up_limb_vector)
     mod_up_nodes = []
@@ -265,6 +268,7 @@ class SubroutineLowering():
     self._ir_dag.add_edge(ksk_node, split_node)
 
     mod_down_op = ir.BaseConv(opcode=ir.OpCode.BaseConv,
+                              dataflow=ir.DataflowType.Coefficient,
                               operand=mod_up_limb_vector,
                               result=output_limb_vector)
     mod_down_nodes = []
@@ -319,6 +323,7 @@ class SubroutineLowering():
                         result1=input_limb_vector,
                         result2=input_limb_vector)
     base_conv_op = ir.BaseConv(opcode=ir.OpCode.BaseConv,
+                               dataflow=ir.DataflowType.Coefficient,
                                operand=input_limb_vector,
                                result=output_limb_vector)
     merge_op = ir.Merge(opcode=ir.OpCode.Merge,

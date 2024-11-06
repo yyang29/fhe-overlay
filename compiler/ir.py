@@ -23,6 +23,7 @@ class OpCode(Enum):
   BaseConv = "BaseConv"
   Merge = "Merge"
   Split = "Split"
+  NoOp = "NoOp"
 
 
 class LimbElementwiseOpCode(Enum):
@@ -86,7 +87,6 @@ class Decompose(Operation):
 
 @dataclass(kw_only=True)
 class BaseConv(Operation):
-  dataflow = DataflowType.Coefficient
   operand: data_types.LimbVector
   result: data_types.LimbVector
 
