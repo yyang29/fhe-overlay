@@ -89,21 +89,13 @@ class Compiler():
             font_color='black',
             edge_color='gray')
     plt.savefig("ir_graph.png", format="PNG")
-    logging.info("-----------------\n")
-
-    # If merge is followed by a split, they can be removed from the graph and no memory-to-memory copy is needed.
-    # Annotate with dataflow type - add node group based on graph traversal.
-    #  - BFS. First node is specified with a group. As long as its children have the same dataflow type, they are added to the same group.
-    # Apply memory location hint for fusion.
-    # Apply hierarchical topological sort for execution order.
-
     # Display the nodes and edges in the DAG with metadata
-    # logging.info("-----------------")
-    # logging.info(type(dag))
-    # logging.info(f"Nodes in the DAG: {dag.nodes(data=True)}")
-    # logging.info("Edges in the DAG with metadata:")
-    # for edge in dag.edges(data=True):
-    #   logging.info(edge)
+    logging.info(type(dag))
+    logging.info(f"Nodes in the DAG: {dag.nodes(data=True)}")
+    logging.info("Edges in the DAG with metadata:")
+    for edge in dag.edges(data=True):
+      logging.info(edge)
+    logging.info("-----------------")
 
   def _backend_passes(self):
     # 1. Dataflow selection
@@ -111,4 +103,11 @@ class Compiler():
     # 3. Apply fusion (if enabled)
     # 4. Topological sort for execution order
     # 5. ISA generation
+
+    # If merge is followed by a split, they can be removed from the graph and no memory-to-memory copy is needed.
+    # All the following are enabled when apply_optimization is True. Else, each subroutine is executed as is with memory location in HBM.
+    # Annotate with dataflow type - add node group based on graph traversal.
+    #  - BFS. First node is specified with a group. As long as its children have the same dataflow type, they are added to the same group.
+    # Apply memory location hint for fusion.
+    # Apply hierarchical topological sort for execution order.
     pass
