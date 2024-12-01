@@ -16,9 +16,14 @@ class HwParameters:
     self.num_alu_lanes = num_alu_lanes
     self.num_permute_lanes = num_permute_lanes
     self.hbm_bandwidth_gbps = hbm_bandwidth_gbps
+    self.frequency_mhz = 300
 
   def display_parameters(self):
     logging.info("HW parameters are as shown below.")
     logging.info(f"\tNumber of ALU lanes: {self.num_alu_lanes}")
     logging.info(f"\tNumber of permute lanes: {self.num_permute_lanes}")
     logging.info(f"\tHBM bandwidth (Gbps): {self.hbm_bandwidth_gbps}")
+
+  @property
+  def cycle_time_us(self):
+    return 1 / (self.frequency_mhz * 1e6) * 1e6
