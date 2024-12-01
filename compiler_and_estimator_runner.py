@@ -6,6 +6,8 @@ import logging
 
 from compiler import compiler_lib
 from compiler import he_parameters
+from performance_model import cost_estimator
+from performance_model import hw_parameters
 
 
 def parse_input_csv(input_file):
@@ -63,7 +65,9 @@ def main():
                             args.apply_optimization)
   instructions = c.run()
 
-  logging.info(instructions[2])
+  hw_params = hw_parameters.HwParameters()
+  estimator = cost_estimator.CostEstimator(he_params, hw_params)
+  estimator.predict_costs(instructions)
 
 
 if __name__ == "__main__":
