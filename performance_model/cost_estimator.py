@@ -16,7 +16,7 @@ class CostEstimator:
 
   def predict_costs(self, instructions):
     for instruction in instructions:
-      logging.info(f"Instruction: {instruction}")
+      # logging.info(f"Instruction: {instruction}")
       self._time_cycles += self._predict_cost(instruction)
 
     logging.info(f"Predicted time (cycles): {self._time_cycles}")
@@ -26,10 +26,21 @@ class CostEstimator:
 
   def _predict_cost(self, instruction):
     if instruction["ir_op"].opcode == ir.OpCode.LimbElementwise:
-      return self._predict_elementwise_cost()
-    else:
+      return self._predict_elementwise_cost(instruction)
+    elif instruction["ir_op"].opcode == ir.OpCode.Ntt:
       return 0
-      # raise ValueError(f"Unknown instruction type: {instruction.opcode}")
+    elif instruction["ir_op"].opcode == ir.OpCode.KskInnerProduct:
+      return 0
+    elif instruction["ir_op"].opcode == ir.OpCode.Automorph:
+      return 0
+    elif instruction["ir_op"].opcode == ir.OpCode.Decompose:
+      return 0
+    elif instruction["ir_op"].opcode == ir.OpCode.BaseConv:
+      return 0
+    else:
+      # For nodes that are not materialized in the IR.
+      return 0
 
-  def _predict_elementwise_cost(self):
-    return 1
+  def _predict_elementwise_cost(self, instruction):
+    logging.info(f"Predicting cost for operation: {instruction}")
+    return 0
