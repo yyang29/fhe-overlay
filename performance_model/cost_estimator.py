@@ -77,16 +77,50 @@ class CostEstimator:
     return latency_us * self._derating_factor
 
   def _predict_ntt_cost(self, instruction):
-    pass
+    return 0
 
   def _predict_ksk_inner_product_cost(self, instruction):
-    pass
+    logging.info(f"Predicting cost for operation: {instruction}")
+    ir_op = instruction["ir_op"]
+    ksk_read_bytes = utils.get_key_switch_keys_size_bytes(self._he_params)
+
+    alpha = ir_op.alpha
+    beta = self._he_params.beta
+    k = self._he_params.k
+    num_limbs = alpha * beta + k - 1
+    logging.info(
+        f"alpha: {alpha}, beta: {beta}, k: {k}, num_limbs: {num_limbs}")
+    num_limbs_per_digit = ir_op.alpha
+    limb_read_bytes = beta * utils.get_limb_size_bytes(
+        self._he_params) * num_limbs_per_digit
+    total_read_bytes = (ksk_read_bytes + limb_read_bytes if ir_op.input_location
+                        == ir.MemoryLocation.Dram else ksk_read_bytes)
+    memory_read_time_us = total_read_bytes / self._hw_params.hbm_bandwidth_gbps / 1e3
+
+    total_write_bytes = utils.get_limb_size_bytes(
+        self._he_params
+    ) * ir_op.result.num_rows * ir_op.result.num_columns * ir_op.alpha
+    memory_write_time_us = total_write_bytes / self._hw_params.hbm_bandwidth_gbps / 1e3
+
+    compute_time_us = ((2 * num_limbs * beta *
+                        (self._he_params.N / self._hw_params.num_alu_lanes)) *
+                       utils.get_cycle_us(self._hw_params.frequency_mhz))
+
+    latency_us = max(compute_time_us,
+                     memory_read_time_us + memory_write_time_us)
+
+    logging.debug(f"Estimating innerprod latency. "
+                  f"memory_read_time {memory_read_time_us} "
+                  f"memory write time {memory_write_time_us} "
+                  f"compute time {compute_time_us}")
+
+    return latency_us * self._derating_factor
 
   def _predict_automorph_cost(self, instruction):
-    pass
+    return 0
 
   def _predict_decompose_cost(self, instruction):
-    pass
+    return 0
 
   def _predict_base_conv_cost(self, instruction):
-    pass
+    return 0
