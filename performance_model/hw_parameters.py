@@ -16,6 +16,8 @@ class HwParameters:
     self.num_alu_lanes = num_alu_lanes
     self.num_permute_lanes = num_permute_lanes
     self.hbm_bandwidth_gbps = hbm_bandwidth_gbps
+    self.scratchpad_read_bytes_per_cycle = 512 * 8
+    self.scratchpad_write_bytes_per_cycle = 512 * 8
     self.frequency_mhz = 300
 
   def display_parameters(self):
