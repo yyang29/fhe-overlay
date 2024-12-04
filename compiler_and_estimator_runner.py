@@ -61,9 +61,9 @@ def main():
   with open(args.test_program, 'r') as file:
     test_program_content = file.read()
 
-  c = compiler_lib.Compiler(test_program_content, args.assembly, he_params,
-                            args.apply_optimization)
-  instructions = c.run()
+  compiler = compiler_lib.Compiler(test_program_content, args.assembly,
+                                   he_params, args.apply_optimization)
+  instructions = compiler.run()
 
   hw_params = hw_parameters.HwParameters()
   estimator = cost_estimator.CostEstimator(he_params, hw_params)
