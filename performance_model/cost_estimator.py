@@ -24,7 +24,10 @@ class CostEstimator:
         ir.OpCode.KskInnerProduct: 0,
         ir.OpCode.Automorph: 0,
         ir.OpCode.Decompose: 0,
-        ir.OpCode.BaseConv: 0
+        ir.OpCode.BaseConv: 0,
+        ir.OpCode.Merge: 0,
+        ir.OpCode.Split: 0,
+        ir.OpCode.NoOp: 0,
     }
 
     logging.info("Cost Estimator initialized.")
