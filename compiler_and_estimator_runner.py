@@ -48,6 +48,10 @@ def main():
                       "-o",
                       action='store_true',
                       help="Apply optimizations to the test program.")
+  parser.add_argument("--enable_layout_optimization",
+                      "-l",
+                      action='store_true',
+                      help="Enable layout optimization.")
 
   args = parser.parse_args()
 
@@ -66,7 +70,8 @@ def main():
   instructions = compiler.run()
 
   hw_params = hw_parameters.HwParameters()
-  estimator = cost_estimator.CostEstimator(he_params, hw_params)
+  estimator = cost_estimator.CostEstimator(he_params, hw_params,
+                                           args.enable_layout_optimization)
   estimator.predict_costs(instructions)
 
 
