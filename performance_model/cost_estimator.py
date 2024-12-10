@@ -69,7 +69,7 @@ class CostEstimator:
     if ir_op.input_location == ir.MemoryLocation.Dram:
       memory_read_time_us = utils.get_limb_size_bytes(
           self._he_params) * num_limbs_read / self._get_effective_hbm_bandwidth(
-              ir.data_types.Limb) / 1e3
+              ir.DataflowType.Limb) / 1e3
     else:
       memory_read_time_us = 0
 
@@ -77,7 +77,7 @@ class CostEstimator:
       memory_write_time_us = utils.get_limb_size_bytes(
           self._he_params
       ) * num_limbs_write / self._get_effective_hbm_bandwidth(
-          ir.data_types.Limb) / 1e3
+          ir.DataflowType.Limb) / 1e3
     else:
       memory_write_time_us = 0
 
@@ -109,7 +109,7 @@ class CostEstimator:
     else:
       total_read_bytes = tf_read_bytes
     memory_read_time_us = total_read_bytes / self._get_effective_hbm_bandwidth(
-        ir.data_types.Limb) / 1e3
+        ir.DataflowType.Limb) / 1e3
 
     if ir_op.output_location == ir.MemoryLocation.Dram:
       total_write_bytes = utils.get_limb_size_bytes(
@@ -117,7 +117,7 @@ class CostEstimator:
     else:
       total_write_bytes = 0
     memory_write_time_us = total_write_bytes / self._get_effective_hbm_bandwidth(
-        ir.data_types.Limb) / 1e3
+        ir.DataflowType.Limb) / 1e3
 
     alu_cycles = (num_limbs_read * math.log2(self._he_params.N) *
                   (self._he_params.N / self._hw_params.num_alu_lanes))
@@ -156,13 +156,13 @@ class CostEstimator:
     total_read_bytes = (ksk_read_bytes + limb_read_bytes if ir_op.input_location
                         == ir.MemoryLocation.Dram else ksk_read_bytes)
     memory_read_time_us = total_read_bytes / self._get_effective_hbm_bandwidth(
-        ir.data_types.Limb) / 1e3
+        ir.DataflowType.Limb) / 1e3
 
     total_write_bytes = utils.get_limb_size_bytes(
         self._he_params
     ) * ir_op.result.num_rows * ir_op.result.num_columns * ir_op.alpha
     memory_write_time_us = total_write_bytes / self._get_effective_hbm_bandwidth(
-        ir.data_types.Limb) / 1e3
+        ir.DataflowType.Limb) / 1e3
 
     compute_time_us = ((2 * num_limbs * beta *
                         (self._he_params.N / self._hw_params.num_alu_lanes)) *
@@ -185,10 +185,47 @@ class CostEstimator:
     return 0
 
   def _predict_base_conv_cost(self, instruction):
-    return 0
+    logging.info(f"Predicting cost for operation: {instruction}")
+    ir_op = instruction["ir_op"]
+    num_limbs_read = ir_op.operand.num_limbs
+    num_limbs_write = ir_op.result.num_limbs
+    # For base conversion, we store (num_input_limbs - num_limbs_read) limbs
+    # in the scratchpad. They are reused by num_output_limbs times.
+    # For the other limbs, they have to be streamed to DRAM once for each
+    # output limb.
+    limb_read_bytes = utils.get_limb_size_bytes(
+        self._he_params) * num_limbs_read
+    if ir_op.input_location == ir.MemoryLocation.Dram:
+      total_read_bytes = limb_read_bytes
+    else:
+      total_read_bytes = 0
+    memory_read_time_us = total_read_bytes / self._get_effective_hbm_bandwidth(
+        ir.DataflowType.Coefficient) / 1e3
+
+    if ir_op.output_location == ir.MemoryLocation.Dram:
+      total_write_bytes = utils.get_limb_size_bytes(
+          self._he_params) * num_limbs_write
+    else:
+      total_write_bytes = 0
+    memory_write_time_us = total_write_bytes / self._get_effective_hbm_bandwidth(
+        ir.DataflowType.Coefficient) / 1e3
+
+    compute_time_us = (num_limbs_read *
+                       (self._he_params.N / self._hw_params.num_alu_lanes) *
+                       utils.get_cycle_us(self._hw_params.frequency_mhz)
+                      ) / self._compute_derating_factor
+    logging.info(f"_estimate_base_conv: "
+                 f"compute_time_us: {compute_time_us}, "
+                 f"memory_read_time_us: {memory_read_time_us}, "
+                 f"memory_write_time_us: {memory_write_time_us}")
+
+    latency_us = max(compute_time_us,
+                     memory_read_time_us + memory_write_time_us)
+
+    return latency_us
 
   def _get_effective_hbm_bandwidth(self, dataflow):
-    if dataflow == ir.DataflowType.Coefficient and self._layout_optimization:
+    if dataflow == ir.DataflowType.Coefficient and self._layout_optimization == False:
       return self._hw_params.hbm_bandwidth_gbps * self._memory_derating_factor / 4
     else:
       return self._hw_params.hbm_bandwidth_gbps * self._memory_derating_factor
