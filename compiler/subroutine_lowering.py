@@ -324,6 +324,14 @@ class SubroutineLowering():
                         operand=input_limb_matrix,
                         result1=input_limb_vector,
                         result2=input_limb_vector)
+    ntt_op = ir.Ntt(opcode=ir.OpCode.Ntt,
+                    ntt_opcode=ir.NttOpCode.Forward,
+                    operand=input_limb_vector,
+                    result=input_limb_vector)
+    intt_op = ir.Ntt(opcode=ir.OpCode.Ntt,
+                     ntt_opcode=ir.NttOpCode.Inverse,
+                     operand=output_limb_vector,
+                     result=output_limb_vector)
     base_conv_op = ir.BaseConv(opcode=ir.OpCode.BaseConv,
                                dataflow=ir.DataflowType.Coefficient,
                                operand=input_limb_vector,
@@ -335,14 +343,22 @@ class SubroutineLowering():
 
     # Define new nodes
     split_node = f"{node}_split"
+    ntt_1_node = f"{node}_ntt_1"
+    ntt_2_node = f"{node}_ntt_2"
     base_conv1_node = f"{node}_base_conv1"
     base_conv2_node = f"{node}_base_conv2"
+    intt_1_node = f"{node}_intt_1"
+    intt_2_node = f"{node}_intt_2"
     merge_node = f"{node}_merge"
 
     # Add new nodes with respective attributes
     self._ir_dag.add_node(split_node, ir_op=split_op)
+    self._ir_dag.add_node(ntt_1_node, ir_op=ntt_op)
+    self._ir_dag.add_node(ntt_2_node, ir_op=ntt_op)
     self._ir_dag.add_node(base_conv1_node, ir_op=base_conv_op)
     self._ir_dag.add_node(base_conv2_node, ir_op=base_conv_op)
+    self._ir_dag.add_node(intt_1_node, ir_op=intt_op)
+    self._ir_dag.add_node(intt_2_node, ir_op=intt_op)
     self._ir_dag.add_node(merge_node, ir_op=merge_op)
 
     # Redirect edges
@@ -353,12 +369,16 @@ class SubroutineLowering():
     self._ir_dag.remove_edge(predecessors[0], node)
 
     # 2. Connect split node to the two element-wise add nodes
-    self._ir_dag.add_edge(split_node, base_conv1_node)
-    self._ir_dag.add_edge(split_node, base_conv2_node)
+    self._ir_dag.add_edge(split_node, ntt_1_node)
+    self._ir_dag.add_edge(split_node, ntt_2_node)
+    self._ir_dag.add_edge(ntt_1_node, base_conv1_node)
+    self._ir_dag.add_edge(ntt_2_node, base_conv2_node)
+    self._ir_dag.add_edge(base_conv1_node, intt_1_node)
+    self._ir_dag.add_edge(base_conv2_node, intt_2_node)
 
     # 3. Connect element-wise add nodes to the merge node
-    self._ir_dag.add_edge(base_conv1_node, merge_node)
-    self._ir_dag.add_edge(base_conv2_node, merge_node)
+    self._ir_dag.add_edge(intt_1_node, merge_node)
+    self._ir_dag.add_edge(intt_2_node, merge_node)
 
     # 4. Connect the merge node to the original node's successors
     successors = list(self._ir_dag.successors(node))

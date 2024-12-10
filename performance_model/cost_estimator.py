@@ -1,4 +1,5 @@
 import logging
+import math
 
 from compiler import ir
 from performance_model import utils
@@ -68,14 +69,15 @@ class CostEstimator:
     if ir_op.input_location == ir.MemoryLocation.Dram:
       memory_read_time_us = utils.get_limb_size_bytes(
           self._he_params) * num_limbs_read / self._get_effective_hbm_bandwidth(
-          ) / 1e3
+              ir.data_types.Limb) / 1e3
     else:
       memory_read_time_us = 0
 
     if ir_op.output_location == ir.MemoryLocation.Dram:
       memory_write_time_us = utils.get_limb_size_bytes(
           self._he_params
-      ) * num_limbs_write / self._get_effective_hbm_bandwidth() / 1e3
+      ) * num_limbs_write / self._get_effective_hbm_bandwidth(
+          ir.data_types.Limb) / 1e3
     else:
       memory_write_time_us = 0
 
@@ -94,7 +96,48 @@ class CostEstimator:
     return latency_us
 
   def _predict_ntt_cost(self, instruction):
-    return 0
+    logging.info(f"Predicting cost for operation: {instruction}")
+    ir_op = instruction["ir_op"]
+    num_limbs_read = ir_op.operand.num_limbs
+    num_limbs_write = ir_op.result.num_limbs
+    tf_read_bytes = utils.get_twiddle_factor_size_bytes(self._he_params,
+                                                        num_limbs_read)
+    limb_read_bytes = utils.get_limb_size_bytes(
+        self._he_params) * num_limbs_read
+    if ir_op.input_location == ir.MemoryLocation.Dram:
+      total_read_bytes = tf_read_bytes + limb_read_bytes
+    else:
+      total_read_bytes = tf_read_bytes
+    memory_read_time_us = total_read_bytes / self._get_effective_hbm_bandwidth(
+        ir.data_types.Limb) / 1e3
+
+    if ir_op.output_location == ir.MemoryLocation.Dram:
+      total_write_bytes = utils.get_limb_size_bytes(
+          self._he_params) * num_limbs_write
+    else:
+      total_write_bytes = 0
+    memory_write_time_us = total_write_bytes / self._get_effective_hbm_bandwidth(
+        ir.data_types.Limb) / 1e3
+
+    alu_cycles = (num_limbs_read * math.log2(self._he_params.N) *
+                  (self._he_params.N / self._hw_params.num_alu_lanes))
+    permute_cycles = (num_limbs_read * math.log2(self._he_params.N) *
+                      (self._he_params.N / self._hw_params.num_permute_lanes))
+    compute_time_us = (max(alu_cycles, permute_cycles) *
+                       utils.get_cycle_us(self._hw_params.frequency_mhz) /
+                       self._compute_derating_factor)
+
+    logging.debug(f"compute time (us): {compute_time_us}, "
+                  f"memory read time (us): {memory_read_time_us} "
+                  f"memory write time (us): {memory_write_time_us}.")
+    if compute_time_us > memory_read_time_us + memory_write_time_us:
+      logging.debug(f"NTT/INTT is compute bound.")
+    else:
+      logging.debug(f"NTT/INTT is memory bound.")
+    latency_us = max(compute_time_us,
+                     memory_read_time_us + memory_write_time_us)
+
+    return latency_us
 
   def _predict_ksk_inner_product_cost(self, instruction):
     logging.info(f"Predicting cost for operation: {instruction}")
@@ -113,13 +156,13 @@ class CostEstimator:
     total_read_bytes = (ksk_read_bytes + limb_read_bytes if ir_op.input_location
                         == ir.MemoryLocation.Dram else ksk_read_bytes)
     memory_read_time_us = total_read_bytes / self._get_effective_hbm_bandwidth(
-    ) / 1e3
+        ir.data_types.Limb) / 1e3
 
     total_write_bytes = utils.get_limb_size_bytes(
         self._he_params
     ) * ir_op.result.num_rows * ir_op.result.num_columns * ir_op.alpha
     memory_write_time_us = total_write_bytes / self._get_effective_hbm_bandwidth(
-    ) / 1e3
+        ir.data_types.Limb) / 1e3
 
     compute_time_us = ((2 * num_limbs * beta *
                         (self._he_params.N / self._hw_params.num_alu_lanes)) *
@@ -144,8 +187,8 @@ class CostEstimator:
   def _predict_base_conv_cost(self, instruction):
     return 0
 
-  def _get_effective_hbm_bandwidth(self):
-    if self._layout_optimization:
-      return self._hw_params.hbm_bandwidth_gbps * self._memory_derating_factor
-    else:
+  def _get_effective_hbm_bandwidth(self, dataflow):
+    if dataflow == ir.DataflowType.Coefficient and self._layout_optimization:
       return self._hw_params.hbm_bandwidth_gbps * self._memory_derating_factor / 4
+    else:
+      return self._hw_params.hbm_bandwidth_gbps * self._memory_derating_factor
