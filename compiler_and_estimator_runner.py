@@ -70,8 +70,11 @@ def main():
   instructions = compiler.run()
 
   hw_params = hw_parameters.HwParameters()
-  estimator = cost_estimator.CostEstimator(he_params, hw_params,
-                                           args.enable_layout_optimization)
+  estimator = cost_estimator.CostEstimator(he_params,
+                                           hw_params,
+                                           args.enable_layout_optimization,
+                                           memory_derating_factor=0.8,
+                                           compute_derating_factor=0.95)
   estimator.predict_costs(instructions)
 
 
