@@ -238,15 +238,30 @@ class SubroutineLowering():
     self._ir_dag.add_node(decompose_split_node, ir_op=decompose_split_op)
     self._ir_dag.add_edge(decompose_node, decompose_split_node)
 
+    ntt_op = ir.Ntt(opcode=ir.OpCode.Ntt,
+                    ntt_opcode=ir.NttOpCode.Forward,
+                    operand=mod_up_limb_vector,
+                    result=mod_up_limb_vector)
+    intt_op = ir.Ntt(opcode=ir.OpCode.Ntt,
+                     ntt_opcode=ir.NttOpCode.Inverse,
+                     operand=decomposed_limb_vector,
+                     result=decomposed_limb_vector)
     mod_up_op = ir.BaseConv(opcode=ir.OpCode.BaseConv,
                             dataflow=ir.DataflowType.Coefficient,
                             operand=decomposed_limb_vector,
                             result=mod_up_limb_vector)
     mod_up_nodes = []
     for i in range(0, self._he_params.beta):
-      mod_up_nodes.append(f"{node}_mod_up_{i}")
-      self._ir_dag.add_node(mod_up_nodes[i], ir_op=mod_up_op)
-      self._ir_dag.add_edge(decompose_split_node, mod_up_nodes[i])
+      mod_up_intt_node = f"{node}_mod_up_intt_{i}"
+      mod_up_ntt_node = f"{node}_mod_up_ntt_{i}"
+      mod_up_baseconv_node = f"{node}_mod_up_baseconv_{i}"
+      mod_up_nodes.append(mod_up_ntt_node)
+      self._ir_dag.add_node(mod_up_intt_node, ir_op=intt_op)
+      self._ir_dag.add_node(mod_up_ntt_node, ir_op=ntt_op)
+      self._ir_dag.add_node(mod_up_baseconv_node, ir_op=mod_up_op)
+      self._ir_dag.add_edge(decompose_split_node, mod_up_intt_node)
+      self._ir_dag.add_edge(mod_up_intt_node, mod_up_baseconv_node)
+      self._ir_dag.add_edge(mod_up_baseconv_node, mod_up_ntt_node)
 
     ksk_limb_matrix = data_types.LimbMatrix(limb, 1, self._he_params.beta)
     ksk = data_types.LimbMatrix(limb, self._he_params.beta, 2)
@@ -269,15 +284,30 @@ class SubroutineLowering():
     self._ir_dag.add_node(split_node, ir_op=split_op)
     self._ir_dag.add_edge(ksk_node, split_node)
 
+    mod_down_ntt_op = ir.Ntt(opcode=ir.OpCode.Ntt,
+                             ntt_opcode=ir.NttOpCode.Forward,
+                             operand=output_limb_vector,
+                             result=output_limb_vector)
+    mod_down_intt_op = ir.Ntt(opcode=ir.OpCode.Ntt,
+                              ntt_opcode=ir.NttOpCode.Inverse,
+                              operand=mod_up_limb_vector,
+                              result=mod_up_limb_vector)
     mod_down_op = ir.BaseConv(opcode=ir.OpCode.BaseConv,
                               dataflow=ir.DataflowType.Coefficient,
                               operand=mod_up_limb_vector,
                               result=output_limb_vector)
     mod_down_nodes = []
     for i in range(0, 2):
-      mod_down_nodes.append(f"{node}_mod_down_{i}")
-      self._ir_dag.add_node(mod_down_nodes[i], ir_op=mod_down_op)
-      self._ir_dag.add_edge(split_node, mod_down_nodes[i])
+      mod_down_intt_node = f"{node}_mod_down_intt_{i}"
+      mod_down_ntt_node = f"{node}_mod_down_ntt_{i}"
+      mod_down_baseconv_node = f"{node}_mod_down_baseconv_{i}"
+      mod_down_nodes.append(mod_down_ntt_node)
+      self._ir_dag.add_node(mod_down_intt_node, ir_op=mod_down_intt_op)
+      self._ir_dag.add_node(mod_down_ntt_node, ir_op=mod_down_ntt_op)
+      self._ir_dag.add_node(mod_down_baseconv_node, ir_op=mod_down_op)
+      self._ir_dag.add_edge(split_node, mod_down_intt_node)
+      self._ir_dag.add_edge(mod_down_intt_node, mod_down_baseconv_node)
+      self._ir_dag.add_edge(mod_down_baseconv_node, mod_down_ntt_node)
 
     final_elementwise_op = ir.LimbElementwise(
         opcode=ir.OpCode.LimbElementwise,

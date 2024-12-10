@@ -64,7 +64,7 @@ class CostEstimator:
   def _predict_elementwise_cost(self, instruction):
     logging.info(f"Predicting cost for operation: {instruction}")
     ir_op = instruction["ir_op"]
-    num_limbs_read = ir_op.operand1.num_limbs
+    num_limbs_read = ir_op.operand1.num_limbs * 2  # Binary op.
     num_limbs_write = ir_op.result.num_limbs
     if ir_op.input_location == ir.MemoryLocation.Dram:
       memory_read_time_us = utils.get_limb_size_bytes(
@@ -182,7 +182,38 @@ class CostEstimator:
     return 0
 
   def _predict_decompose_cost(self, instruction):
-    return 0
+    logging.info(f"Predicting cost for operation: {instruction}")
+    ir_op = instruction["ir_op"]
+    num_limbs_read = ir_op.operand.num_limbs
+    num_limbs_write = ir_op.result.num_rows * ir_op.result.num_columns
+    if ir_op.input_location == ir.MemoryLocation.Dram:
+      memory_read_time_us = utils.get_limb_size_bytes(
+          self._he_params) * num_limbs_read / self._get_effective_hbm_bandwidth(
+              ir.DataflowType.Limb) / 1e3
+    else:
+      memory_read_time_us = 0
+
+    if ir_op.output_location == ir.MemoryLocation.Dram:
+      memory_write_time_us = utils.get_limb_size_bytes(
+          self._he_params
+      ) * num_limbs_write / self._get_effective_hbm_bandwidth(
+          ir.DataflowType.Limb) / 1e3
+    else:
+      memory_write_time_us = 0
+
+    compute_time_us = 2 * (num_limbs_read *
+                           (self._he_params.N / self._hw_params.num_alu_lanes) *
+                           utils.get_cycle_us(self._hw_params.frequency_mhz)
+                          ) / self._compute_derating_factor
+    logging.info(f"_estimate_decompose: "
+                 f"compute_time_us: {compute_time_us}, "
+                 f"memory_read_time_us: {memory_read_time_us}, "
+                 f"memory_write_time_us: {memory_write_time_us}")
+
+    latency_us = max(compute_time_us,
+                     memory_read_time_us + memory_write_time_us)
+
+    return latency_us
 
   def _predict_base_conv_cost(self, instruction):
     logging.info(f"Predicting cost for operation: {instruction}")
