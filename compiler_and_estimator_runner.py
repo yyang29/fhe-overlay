@@ -52,6 +52,11 @@ def main():
                       "-l",
                       action='store_true',
                       help="Enable layout optimization.")
+  parser.add_argument("--num_alu_lanes",
+                      "-c",
+                      type=int,
+                      default=512,
+                      help="Number of ALU lanes.")
 
   args = parser.parse_args()
 
@@ -69,7 +74,7 @@ def main():
                                    he_params, args.apply_optimization)
   instructions = compiler.run()
 
-  hw_params = hw_parameters.HwParameters()
+  hw_params = hw_parameters.HwParameters(num_alu_lanes=args.num_alu_lanes)
   estimator = cost_estimator.CostEstimator(he_params,
                                            hw_params,
                                            args.enable_layout_optimization,
