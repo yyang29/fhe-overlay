@@ -420,7 +420,6 @@ class SubroutineLowering():
     self._ir_dag.remove_node(node)
 
   def _transform_rotate(self, node):
-    # TODO: Rotate should require less ops compared to CtCtMult.
     attrs = self._ir_dag.nodes[node]
     num_input_limbs = attrs.get('num_input_limbs')
     num_output_limbs = attrs.get('num_output_limbs')
@@ -451,40 +450,28 @@ class SubroutineLowering():
 
     # 1. Connect predecessors of the original node to the split node
     predecessors = list(self._ir_dag.predecessors(node))
-    assert len(predecessors) == 2
+    assert len(predecessors) == 1
     self._ir_dag.add_edge(predecessors[0], split1_node)
-    self._ir_dag.add_edge(predecessors[1], split2_node)
     for pred in predecessors:
       self._ir_dag.remove_edge(pred, node)
 
-    elementwise_op = ir.LimbElementwise(
-        opcode=ir.OpCode.LimbElementwise,
-        elementwise_opcode=ir.LimbElementwiseOpCode.Mul,
-        operand1=input_limb_vector,
-        operand2=input_limb_vector,
-        result=input_limb_vector)
-    elementwise_nodes = []
-    for i in range(0, 5):
-      elementwise_nodes.append(f"{node}_elementwise{i}")
-      self._ir_dag.add_node(elementwise_nodes[i], ir_op=elementwise_op)
+    automorph_op = ir.Automorph(opcode=ir.OpCode.Automorph,
+                                operand1=input_limb_vector,
+                                result=input_limb_vector)
+    automorph_nodes = []
+    for i in range(0, 2):
+      automorph_nodes.append(f"{node}_automorph{i}")
+      self._ir_dag.add_node(automorph_nodes[i], ir_op=automorph_op)
 
-    self._ir_dag.add_edge(split1_node, elementwise_nodes[0])
-    self._ir_dag.add_edge(split1_node, elementwise_nodes[1])
-    self._ir_dag.add_edge(split1_node, elementwise_nodes[2])
-    self._ir_dag.add_edge(split1_node, elementwise_nodes[3])
-    self._ir_dag.add_edge(split2_node, elementwise_nodes[0])
-    self._ir_dag.add_edge(split2_node, elementwise_nodes[1])
-    self._ir_dag.add_edge(split2_node, elementwise_nodes[2])
-    self._ir_dag.add_edge(split2_node, elementwise_nodes[3])
-    self._ir_dag.add_edge(elementwise_nodes[1], elementwise_nodes[4])
-    self._ir_dag.add_edge(elementwise_nodes[2], elementwise_nodes[4])
+    self._ir_dag.add_edge(split1_node, automorph_nodes[0])
+    self._ir_dag.add_edge(split1_node, automorph_nodes[1])
 
     decompose_op = ir.Decompose(opcode=ir.OpCode.Decompose,
                                 operand=input_limb_vector,
                                 result=decomposed_limb_matrix)
     decompose_node = f"{node}_decompose"
     self._ir_dag.add_node(decompose_node, ir_op=decompose_op)
-    self._ir_dag.add_edge(elementwise_nodes[0], decompose_node)
+    self._ir_dag.add_edge(automorph_nodes[0], decompose_node)
 
     decompose_split_op = ir.Split(opcode=ir.OpCode.Split,
                                   operand=decomposed_limb_matrix,
@@ -494,15 +481,30 @@ class SubroutineLowering():
     self._ir_dag.add_node(decompose_split_node, ir_op=decompose_split_op)
     self._ir_dag.add_edge(decompose_node, decompose_split_node)
 
+    ntt_op = ir.Ntt(opcode=ir.OpCode.Ntt,
+                    ntt_opcode=ir.NttOpCode.Forward,
+                    operand=mod_up_limb_vector,
+                    result=mod_up_limb_vector)
+    intt_op = ir.Ntt(opcode=ir.OpCode.Ntt,
+                     ntt_opcode=ir.NttOpCode.Inverse,
+                     operand=decomposed_limb_vector,
+                     result=decomposed_limb_vector)
     mod_up_op = ir.BaseConv(opcode=ir.OpCode.BaseConv,
                             dataflow=ir.DataflowType.Coefficient,
                             operand=decomposed_limb_vector,
                             result=mod_up_limb_vector)
     mod_up_nodes = []
     for i in range(0, self._he_params.beta):
-      mod_up_nodes.append(f"{node}_mod_up_{i}")
-      self._ir_dag.add_node(mod_up_nodes[i], ir_op=mod_up_op)
-      self._ir_dag.add_edge(decompose_split_node, mod_up_nodes[i])
+      mod_up_intt_node = f"{node}_mod_up_intt_{i}"
+      mod_up_ntt_node = f"{node}_mod_up_ntt_{i}"
+      mod_up_baseconv_node = f"{node}_mod_up_baseconv_{i}"
+      mod_up_nodes.append(mod_up_ntt_node)
+      self._ir_dag.add_node(mod_up_intt_node, ir_op=intt_op)
+      self._ir_dag.add_node(mod_up_ntt_node, ir_op=ntt_op)
+      self._ir_dag.add_node(mod_up_baseconv_node, ir_op=mod_up_op)
+      self._ir_dag.add_edge(decompose_split_node, mod_up_intt_node)
+      self._ir_dag.add_edge(mod_up_intt_node, mod_up_baseconv_node)
+      self._ir_dag.add_edge(mod_up_baseconv_node, mod_up_ntt_node)
 
     ksk_limb_matrix = data_types.LimbMatrix(limb, 1, self._he_params.beta)
     ksk = data_types.LimbMatrix(limb, self._he_params.beta, 2)
@@ -525,15 +527,30 @@ class SubroutineLowering():
     self._ir_dag.add_node(split_node, ir_op=split_op)
     self._ir_dag.add_edge(ksk_node, split_node)
 
+    mod_down_ntt_op = ir.Ntt(opcode=ir.OpCode.Ntt,
+                             ntt_opcode=ir.NttOpCode.Forward,
+                             operand=output_limb_vector,
+                             result=output_limb_vector)
+    mod_down_intt_op = ir.Ntt(opcode=ir.OpCode.Ntt,
+                              ntt_opcode=ir.NttOpCode.Inverse,
+                              operand=mod_up_limb_vector,
+                              result=mod_up_limb_vector)
     mod_down_op = ir.BaseConv(opcode=ir.OpCode.BaseConv,
                               dataflow=ir.DataflowType.Coefficient,
                               operand=mod_up_limb_vector,
                               result=output_limb_vector)
     mod_down_nodes = []
     for i in range(0, 2):
-      mod_down_nodes.append(f"{node}_mod_down_{i}")
-      self._ir_dag.add_node(mod_down_nodes[i], ir_op=mod_down_op)
-      self._ir_dag.add_edge(split_node, mod_down_nodes[i])
+      mod_down_intt_node = f"{node}_mod_down_intt_{i}"
+      mod_down_ntt_node = f"{node}_mod_down_ntt_{i}"
+      mod_down_baseconv_node = f"{node}_mod_down_baseconv_{i}"
+      mod_down_nodes.append(mod_down_ntt_node)
+      self._ir_dag.add_node(mod_down_intt_node, ir_op=mod_down_intt_op)
+      self._ir_dag.add_node(mod_down_ntt_node, ir_op=mod_down_ntt_op)
+      self._ir_dag.add_node(mod_down_baseconv_node, ir_op=mod_down_op)
+      self._ir_dag.add_edge(split_node, mod_down_intt_node)
+      self._ir_dag.add_edge(mod_down_intt_node, mod_down_baseconv_node)
+      self._ir_dag.add_edge(mod_down_baseconv_node, mod_down_ntt_node)
 
     final_elementwise_op = ir.LimbElementwise(
         opcode=ir.OpCode.LimbElementwise,
