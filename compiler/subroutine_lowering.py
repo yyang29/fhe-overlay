@@ -423,6 +423,7 @@ class SubroutineLowering():
     attrs = self._ir_dag.nodes[node]
     num_input_limbs = attrs.get('num_input_limbs')
     num_output_limbs = attrs.get('num_output_limbs')
+    distance = attrs.get('rotate_by')
     self._he_params.l = num_input_limbs
     limb = data_types.Limb(self._he_params.N)
     input_limb_matrix = data_types.LimbMatrix(limb, 2, num_input_limbs)
@@ -445,8 +446,6 @@ class SubroutineLowering():
                         result2=input_limb_vector)
     split1_node = f"{node}_split1"
     self._ir_dag.add_node(split1_node, ir_op=split_op)
-    split2_node = f"{node}_split2"
-    self._ir_dag.add_node(split2_node, ir_op=split_op)
 
     # 1. Connect predecessors of the original node to the split node
     predecessors = list(self._ir_dag.predecessors(node))
@@ -456,15 +455,14 @@ class SubroutineLowering():
       self._ir_dag.remove_edge(pred, node)
 
     automorph_op = ir.Automorph(opcode=ir.OpCode.Automorph,
-                                operand1=input_limb_vector,
+                                distance=distance,
+                                operand=input_limb_vector,
                                 result=input_limb_vector)
     automorph_nodes = []
     for i in range(0, 2):
       automorph_nodes.append(f"{node}_automorph{i}")
       self._ir_dag.add_node(automorph_nodes[i], ir_op=automorph_op)
-
-    self._ir_dag.add_edge(split1_node, automorph_nodes[0])
-    self._ir_dag.add_edge(split1_node, automorph_nodes[1])
+      self._ir_dag.add_edge(split1_node, automorph_nodes[i])
 
     decompose_op = ir.Decompose(opcode=ir.OpCode.Decompose,
                                 operand=input_limb_vector,
@@ -558,11 +556,10 @@ class SubroutineLowering():
         operand1=output_limb_vector,
         operand2=output_limb_vector,
         result=output_limb_vector)
-    final_add_nodes = []
-    for i in range(0, 2):
-      final_add_nodes.append(f"{node}_final_add_{i}")
-      self._ir_dag.add_node(final_add_nodes[i], ir_op=final_elementwise_op)
-      self._ir_dag.add_edge(mod_down_nodes[i], final_add_nodes[i])
+    final_add_node = f"{node}_final_add_{i}"
+    self._ir_dag.add_node(final_add_node, ir_op=final_elementwise_op)
+    self._ir_dag.add_edge(mod_down_nodes[1], final_add_node)
+    self._ir_dag.add_edge(automorph_nodes[1], final_add_node)
 
     final_merge_op = ir.Merge(opcode=ir.OpCode.Merge,
                               operand1=output_limb_vector,
@@ -570,8 +567,8 @@ class SubroutineLowering():
                               result=output_limb_matrix)
     final_merge_node = f"{node}_final_merge"
     self._ir_dag.add_node(final_merge_node, ir_op=final_merge_op)
-    self._ir_dag.add_edge(final_add_nodes[0], final_merge_node)
-    self._ir_dag.add_edge(final_add_nodes[1], final_merge_node)
+    self._ir_dag.add_edge(final_add_node, final_merge_node)
+    self._ir_dag.add_edge(mod_down_nodes[0], final_merge_node)
 
     # 4. Connect the merge node to the original node's successors
     successors = list(self._ir_dag.successors(node))
