@@ -68,7 +68,8 @@ class InstructionGeneration():
 
         # Update memory hints for internal nodes (not in the first or last level of the group)
         for node, level in levels.items():
-          if level > 0 and level < max_level:  # Internal levels
+          if level > 2 and level < max_level:  # Internal levels
+            # Skip first two levels because they are not materialized.
             dag.nodes[node].get(
                 'ir_op').input_location = ir.MemoryLocation.Scratchpad
             dag.nodes[node].get(
