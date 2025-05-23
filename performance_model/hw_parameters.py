@@ -19,12 +19,17 @@ class HwParameters:
     self.scratchpad_read_bytes_per_cycle = 512 * 8
     self.scratchpad_write_bytes_per_cycle = 512 * 8
     self.frequency_mhz = 300
+    self.send_bandwidth_gbps = 12.5
+    self.receive_bandwidth_gbps = 12.5
 
   def display_parameters(self):
     logging.info("HW parameters are as shown below.")
     logging.info(f"\tNumber of ALU lanes: {self.num_alu_lanes}")
     logging.info(f"\tNumber of permute lanes: {self.num_permute_lanes}")
     logging.info(f"\tHBM bandwidth (Gbps): {self.hbm_bandwidth_gbps}")
+    logging.info(f"\tNIC send bandwidth (Gbps): {self.send_bandwidth_gbps}")
+    logging.info(
+        f"\tNIC receive bandwidth (Gbps): {self.receive_bandwidth_gbps}")
 
   @property
   def cycle_time_us(self):
