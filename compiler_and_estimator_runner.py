@@ -57,7 +57,11 @@ def main():
                       type=int,
                       default=512,
                       help="Number of ALU lanes.")
-
+  parser.add_argument("--num_fpgas",
+                      "-f",
+                      type=int,
+                      default=1,
+                      help="Number of FPGAs in the design.")
   args = parser.parse_args()
 
   # Parse the HE parameters
