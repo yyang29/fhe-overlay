@@ -1,14 +1,14 @@
 import dataclasses
 
 
-@dataclass(kw_only=True)
+@dataclasses.dataclass(kw_only=True)
 class Gemm():
   m: int
   n: int
   k: int
 
 
-@dataclass(kw_only=True)
+@dataclasses.dataclass(kw_only=True)
 class Conv():
   m: int
   n: int
@@ -24,6 +24,6 @@ class Conv():
   groups: int
 
 
-@dataclass(kw_only=True)
+@dataclasses.dataclass(kw_only=True)
 class Elementwise():
   length: int
