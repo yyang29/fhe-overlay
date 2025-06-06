@@ -31,6 +31,7 @@ class CostEstimator:
         ir.OpCode.Split: 0,
         ir.OpCode.NoOp: 0,
     }
+    self._total_num_fpgas = num_fpgas
 
     logging.info("Cost Estimator initialized.")
     logging.info(f"HE parameters: {self._he_params}")
@@ -39,6 +40,7 @@ class CostEstimator:
 
   def predict_costs(self, instructions):
     for instruction in instructions:
+      logging.info(f"Estimating cost for {instruction=}")
       predicted_time = self._predict_cost(instruction)
       self._time_us += predicted_time
       self._ir_time_breakdown[instruction["ir_op"].opcode] += predicted_time

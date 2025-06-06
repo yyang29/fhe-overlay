@@ -44,6 +44,7 @@ class Operation():
   output_location: MemoryLocation = MemoryLocation.Dram
   dataflow: DataflowType = DataflowType.Limb
   node_group: int = 0
+  num_fpgas: int = 1
 
   def __str__(self):
     return f"{self.opcode}"[7:]
