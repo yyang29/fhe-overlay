@@ -26,10 +26,10 @@ class HwParameters:
     logging.info("HW parameters are as shown below.")
     logging.info(f"\tNumber of ALU lanes: {self.num_alu_lanes}")
     logging.info(f"\tNumber of permute lanes: {self.num_permute_lanes}")
-    logging.info(f"\tHBM bandwidth (Gbps): {self.hbm_bandwidth_gbps}")
-    logging.info(f"\tNIC send bandwidth (Gbps): {self.send_bandwidth_gbps}")
+    logging.info(f"\tHBM bandwidth (GBps): {self.hbm_bandwidth_gbps}")
+    logging.info(f"\tNIC send bandwidth (GBps): {self.send_bandwidth_gbps}")
     logging.info(
-        f"\tNIC receive bandwidth (Gbps): {self.receive_bandwidth_gbps}")
+        f"\tNIC receive bandwidth (GBps): {self.receive_bandwidth_gbps}")
 
   @property
   def cycle_time_us(self):

@@ -12,7 +12,8 @@ class CostEstimator:
                hw_params,
                layout_optimization,
                memory_derating_factor=1.0,
-               compute_derating_factor=1.0):
+               compute_derating_factor=1.0,
+               num_fpgas=1):
     self._he_params = he_params
     self._hw_params = hw_params
     self._time_us = 0
@@ -34,6 +35,7 @@ class CostEstimator:
     logging.info("Cost Estimator initialized.")
     logging.info(f"HE parameters: {self._he_params}")
     logging.info(f"HW parameters: {self._hw_params}")
+    logging.info(f"{num_fpgas=}")
 
   def predict_costs(self, instructions):
     for instruction in instructions:

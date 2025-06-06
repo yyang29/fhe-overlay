@@ -83,7 +83,8 @@ def main():
                                            hw_params,
                                            args.enable_layout_optimization,
                                            memory_derating_factor=0.8,
-                                           compute_derating_factor=0.95)
+                                           compute_derating_factor=0.95,
+                                           num_fpgas=args.num_fpgas)
   estimator.predict_costs(instructions)
 
 
