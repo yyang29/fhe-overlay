@@ -104,3 +104,14 @@ class Split(Operation):
   operand: data_types.LimbMatrix
   result1: data_types.LimbVector
   result2: data_types.LimbVector
+
+
+def is_valid_opcode(opcode: OpCode) -> bool:
+  return opcode in {
+      OpCode.LimbElementwise,
+      OpCode.Ntt,
+      OpCode.KskInnerProduct,
+      OpCode.Automorph,
+      OpCode.Decompose,
+      OpCode.BaseConv,
+  }
